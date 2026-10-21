@@ -5,6 +5,7 @@ import { TEMPLATE_ORDER, TEMPLATES } from '@/lib/templates'
 import type { AgeMode, TemplateId } from '@/lib/types'
 import { CARD_COLORS, type SavedCard } from '@/lib/cards'
 import PetCloud from './PetCloud'
+import GuidedTour from '@/components/GuidedTour'
 import Icon, { type IconName } from '@/components/icons/Icon'
 import s from './experience.module.css'
 
@@ -69,6 +70,7 @@ export default function HomeScreen({ onSnap, onTemplate, onOpenCard, cards }: Pr
 
   return (
     <div className={s.homeContainer}>
+      <GuidedTour mode={mode} />
       {/* Title Section (Page 1) */}
       <section className={s.headerHero}>
         <h1 className={s.mainHeadline}>Hi, {profile.name || 'explorer'}!</h1>
@@ -76,9 +78,10 @@ export default function HomeScreen({ onSnap, onTemplate, onOpenCard, cards }: Pr
       </section>
 
       {/* Pip with Interactive Thought Cloud */}
-      <section className={s.pipSection} style={{ position: 'relative' }}>
+      <section className={s.pipSection} style={{ position: 'relative' }} data-tour="pip">
         <button
           onClick={onSnap}
+          data-tour="camera"
           aria-label={canCamera ? 'Point your camera' : 'Use my camera (a grown-up says yes first)'}
           title={canCamera ? 'Point your camera' : 'A grown-up needs to say yes first'}
           style={{
@@ -97,7 +100,7 @@ export default function HomeScreen({ onSnap, onTemplate, onOpenCard, cards }: Pr
       </section>
 
       {/* Grid of Discovery Cards (Page 1) */}
-      <div className={s.discoveryGrid}>
+      <div className={s.discoveryGrid} data-tour="cards">
         {EXPLORE_ITEMS.map((item) => (
           <button
             key={item.id}

@@ -23,6 +23,7 @@ export default function TopBar({ onSettings, onDeck, cardsCount }: Props) {
         )}
         <button
           onClick={onSettings}
+          data-tour="settings"
           aria-label="Settings"
           title="Settings"
           style={{ background: 'none', border: 0, padding: 6, cursor: 'pointer', color: 'var(--text)', display: 'grid', placeItems: 'center' }}
