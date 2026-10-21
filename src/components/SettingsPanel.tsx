@@ -45,6 +45,16 @@ export function SettingsPanel({ onClose, onDashboard }: { onClose: () => void; o
 
       {!profile.isMinor && <VerifyAdultCard />}
 
+      <button
+        className="c-btn secondary sm"
+        onClick={() => {
+          onClose()
+          setTimeout(() => window.dispatchEvent(new Event('curio:tour')), 250)
+        }}
+      >
+        Replay app tour
+      </button>
+
       <section className="c-card" style={{ display: 'grid', gap: 10 }}>
         <h3 style={{ margin: 0 }}>Privacy & k-ID</h3>
         <span className="c-dim">{privacyBadge(kid.jurisdiction)}</span>
