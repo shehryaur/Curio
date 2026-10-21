@@ -1,11 +1,12 @@
 // Ask Pip: short, mode-adapted, personalized answer about the current object via Gemini. Owner: Shehryar (backend agent)
 import { NextResponse } from 'next/server'
-import { buildAskPrompt, devErrorHeader, buildAskSchema, cleanInterests, cleanName, generateJson, hasGeminiKey, isAgeMode } from '@/lib/gemini'
+import { buildAskPrompt, devErrorHeader, cleanInterests, cleanName, isAgeMode } from '@/lib/gemini'
+import { chatJson } from '@/lib/llm'
 import type { AgeMode, AskResponse } from '@/lib/types'
 
 export const runtime = 'nodejs'
 
-const GEMINI_TIMEOUT_MS = 12_000
+const ASK_TIMEOUT_MS = 14_000
 const MAX_QUESTION_CHARS = 500
 const MAX_SENTENCES: Record<AgeMode, number> = { child: 2, teen: 4, adult: 4, plainWords: 1 }
 
@@ -58,20 +59,26 @@ export async function POST(req: Request) {
   const title = (typeof objectTitle === 'string' && objectTitle.trim().slice(0, 100)) || 'this object'
   const fallback: AskResponse = { answer: FALLBACK_ANSWER[mode], source: 'fallback', focusPartId: null }
 
-  if (!hasGeminiKey()) {
-    console.error('[ask] GEMINI_API_KEY not set; serving fallback')
+  if (!process.env.NVIDIA_API_KEY && !process.env.GEMINI_API_KEY) {
+    console.error('[ask] no NVIDIA_API_KEY or GEMINI_API_KEY; serving fallback')
     return NextResponse.json(fallback)
   }
 
   const t0 = Date.now()
   try {
-    const raw = (await generateJson({
-      prompt: buildAskPrompt({ question: q, objectTitle: title, mode, name, interests, parts }),
-      schema: buildAskSchema(parts.map((p) => p.id)),
-      maxOutputTokens: 600,
-      timeoutMs: GEMINI_TIMEOUT_MS,
-    })) as { answer?: unknown; focusPartId?: unknown } | null
-    const answer = typeof raw?.answer === 'string' ? raw.answer.trim() : ''
+    const llm = await chatJson<{ answer?: unknown; message?: unknown; response?: unknown; text?: unknown; focusPartId?: unknown }>({
+      kind: 'fast',
+      system:
+        'You are Pip, a friendly pet guide in a learning app. Reply with a JSON object only: {"answer": string' +
+        (parts.length ? ', "focusPartId": string}' : '}') +
+        '. No markdown.',
+      user: buildAskPrompt({ question: q, objectTitle: title, mode, name, interests, parts }),
+      maxTokens: 350,
+      timeoutMs: ASK_TIMEOUT_MS,
+    })
+    const raw = llm.data
+    const rawAnswer = raw?.answer || raw?.message || raw?.response || raw?.text
+    const answer = typeof rawAnswer === 'string' ? rawAnswer.trim() : ''
     if (!answer) throw new Error('empty answer')
     const focus = raw?.focusPartId
     const focusPartId = typeof focus === 'string' && parts.some((p) => p.id === focus) ? focus : null
@@ -80,10 +87,10 @@ export async function POST(req: Request) {
       source: 'gemini',
       focusPartId,
     }
-    console.log(`[ask] ok in ${Date.now() - t0}ms focus=${focusPartId ?? 'none'}`)
-    return NextResponse.json(res)
+    console.log(`[ask] ok via ${llm.provider}/${llm.model} in ${llm.ms}ms focus=${focusPartId ?? 'none'}`)
+    return NextResponse.json(res, { headers: { 'x-curio-model': `${llm.provider}/${llm.model}` } })
   } catch (err) {
-    console.error(`[ask] Gemini failed after ${Date.now() - t0}ms; serving fallback:`, err instanceof Error ? err.message : String(err))
+    console.error(`[ask] all models failed after ${Date.now() - t0}ms; serving fallback:`, err instanceof Error ? err.message : String(err))
     return NextResponse.json(fallback, { headers: devErrorHeader(err) })
   }
 }

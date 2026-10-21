@@ -177,3 +177,20 @@ export interface PetProps {
   message?: string // speech bubble text
   size?: 'sm' | 'md' | 'lg'
 }
+
+/** POST /api/learn — "What do you want to learn about?" (typed or spoken topic, e.g. "what is a camera?") */
+export interface LearnRequest {
+  topic: string
+  mode: AgeMode
+  name?: string
+  interests?: string[]
+}
+export interface LearnResponse {
+  topic: string // cleaned object name, e.g. "camera"
+  story: string // age-adapted story Pip tells (child: playful tale; teen: how-it-works; adult: history + engineering; plainWords: calm 2-3 sentences)
+  lesson: ObjectLesson // Learn / Quiz / Explore content (kind 'template' if a starter object matched, else 'photo' with anchors)
+  matchedTemplate: TemplateId | null
+  /** true => no starter model: start Meshy text-to-3D with POST /api/meshy/text { topic } and poll GET ?taskId=&stage=&topic= */
+  needsModel: boolean
+  source: 'nvidia' | 'gemini' | 'fallback'
+}

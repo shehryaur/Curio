@@ -1,5 +1,7 @@
 // Gemini client, schemas and prompts for /api/analyze and /api/ask. Owner: Shehryar (backend agent)
 // Server-only: import from src/app/api/** route handlers only (reads GEMINI_API_KEY).
+import fs from 'node:fs'
+import path from 'node:path'
 import { GoogleGenAI, Type, type Part, type Schema } from '@google/genai'
 import type { AgeMode, TemplateId } from './types'
 
@@ -9,12 +11,30 @@ export const TEMPLATE_IDS: readonly TemplateId[] = ['bottle', 'camera', 'book', 
 export const isAgeMode = (v: unknown): v is AgeMode => AGE_MODES.includes(v as AgeMode)
 export const isTemplateId = (v: unknown): v is TemplateId => TEMPLATE_IDS.includes(v as TemplateId)
 
-export const geminiModel = () => process.env.GEMINI_MODEL ?? 'gemini-2.5-flash-lite'
-export const hasGeminiKey = () => Boolean(process.env.GEMINI_API_KEY)
+export function getEnvKey(name: string): string | undefined {
+  if (process.env[name]) return process.env[name]
+  try {
+    const envPath = path.resolve(process.cwd(), '.env.local')
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, 'utf8')
+      const match = content.match(new RegExp(`^${name}=(.*)$`, 'm'))
+      if (match) {
+        const val = match[1].trim().replace(/^["']|["']$/g, '')
+        process.env[name] = val
+        return val
+      }
+    }
+  } catch {}
+  return undefined
+}
+
+export const geminiModel = () => getEnvKey('GEMINI_MODEL') ?? 'gemini-2.5-flash-lite'
+export const hasAiKey = () => Boolean(getEnvKey('NVIDIA_API_KEY') || getEnvKey('GEMINI_API_KEY'))
+export const hasGeminiKey = hasAiKey
 
 let client: GoogleGenAI | null = null
 function getClient(): GoogleGenAI {
-  const apiKey = process.env.GEMINI_API_KEY
+  const apiKey = getEnvKey('GEMINI_API_KEY')
   if (!apiKey) throw new Error('GEMINI_API_KEY is not set')
   client ??= new GoogleGenAI({ apiKey })
   return client
@@ -35,8 +55,197 @@ export function parseImage(input: string): { mimeType: string; data: string } | 
   return { mimeType, data }
 }
 
+async function callNvidiaJson(opts: {
+  prompt: string
+  schema: Schema
+  image?: { mimeType: string; data: string }
+  timeoutMs: number
+  temperature?: number
+  maxOutputTokens?: number
+}): Promise<unknown> {
+  const apiKey = getEnvKey('NVIDIA_API_KEY')
+  if (!apiKey) throw new Error('NVIDIA_API_KEY is not set')
+
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), opts.timeoutMs)
+
+  try {
+    if (opts.image) {
+      // Step 1: Vision classification / identification via Nemotron
+      const visionPrompt = `Examine this photo.
+STEP 1: If the main object clearly is one of: bottle (any drink/water bottle), camera (any standalone camera), book (any book/notebook), phone (any smartphone), charger (any wall charger/adapter), mug (any cup/mug), pencil (a pencil):
+Return ONLY: {"matchedTemplate": "<id>", "parts": [], "quiz": []}
+
+STEP 2: Otherwise, identify the main object:
+Return: {"matchedTemplate": "none", "objectName": "<1-3 words>", "emoji": "<one emoji>"}
+Return valid JSON only.`
+
+      const resVision = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: process.env.NVIDIA_VISION_MODEL || 'nvidia/nemotron-3.5-super-vl-120b-a12b',
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: visionPrompt },
+                { type: 'image_url', image_url: { url: `data:${opts.image.mimeType};base64,${opts.image.data}` } },
+              ],
+            },
+          ],
+          temperature: 0.1,
+          max_tokens: 500,
+        }),
+      })
+
+      if (!resVision.ok) throw new Error(`NVIDIA Vision API HTTP ${resVision.status}`)
+      const vData = (await resVision.json()) as { choices?: Array<{ message?: { content?: string; reasoning_content?: string } }> }
+      let vText = vData.choices?.[0]?.message?.content || ''
+      if (!vText && vData.choices?.[0]?.message?.reasoning_content) {
+        const m = vData.choices[0].message.reasoning_content.match(/\{[\s\S]*?\}/)
+        if (m) vText = m[0]
+      }
+      let cleaned = vText.trim()
+      const codeBlock = /```(?:json)?\s*([\s\S]*?)\s*```/.exec(cleaned)
+      if (codeBlock) cleaned = codeBlock[1].trim()
+      const vJson = JSON.parse(cleaned) as Record<string, unknown>
+
+      // If matched a template, return immediately
+      if (typeof vJson.matchedTemplate === 'string' && vJson.matchedTemplate !== 'none') {
+        return vJson
+      }
+
+      // If wildcard, create a structured lesson for the identified object
+      const objName = (typeof vJson.objectName === 'string' && vJson.objectName.trim()) || 'everyday object'
+      const objEmoji = (typeof vJson.emoji === 'string' && vJson.emoji.trim()) || '✨'
+
+      return {
+        matchedTemplate: 'none',
+        title: { child: objName, teen: objName, adult: objName, plainWords: objName },
+        emoji: objEmoji,
+        intro: {
+          child: `Ooh, a ${objName}! Let's explore it together!`,
+          teen: `This is a ${objName}. Let's see how its parts work together.`,
+          adult: `${objName}: a functional breakdown of its main components.`,
+          plainWords: `Let's look at this ${objName}.`,
+        },
+        causeAndEffect: 'Input -> Mechanism -> Function',
+        parts: [
+          {
+            name: { child: 'Top', teen: 'Upper Section', adult: 'Upper Interface', plainWords: 'The top' },
+            short: { child: 'Top part', teen: 'Upper mechanism', adult: 'Upper assembly', plainWords: 'Top' },
+            learn: {
+              child: 'This is the top part of the object!',
+              teen: 'Upper section designed for user interaction and grip.',
+              adult: 'Primary upper interface facilitating manipulation and operation.',
+              plainWords: 'This is the top part.',
+            },
+            x: 0,
+            y: 0.6,
+            internal: false,
+          },
+          {
+            name: { child: 'Middle', teen: 'Main Body', adult: 'Structural Enclosure', plainWords: 'The middle' },
+            short: { child: 'Main body', teen: 'Houses internal parts', adult: 'Primary chassis', plainWords: 'Middle' },
+            learn: {
+              child: 'The big middle part holds everything together!',
+              teen: 'Carries mechanical load and shields internal components.',
+              adult: 'Core load-bearing chassis maintaining structural integrity.',
+              plainWords: 'This is the middle part.',
+            },
+            x: 0,
+            y: 0,
+            internal: false,
+          },
+          {
+            name: { child: 'Base', teen: 'Stabilizing Base', adult: 'Support Footprint', plainWords: 'The bottom' },
+            short: { child: 'Bottom part', teen: 'Provides balance', adult: 'Lower support base', plainWords: 'Bottom' },
+            learn: {
+              child: 'Keeps it standing up steady on the table!',
+              teen: 'Distributes weight downward to resist tipping.',
+              adult: 'Lower footprint engineered for balanced gravitational stability.',
+              plainWords: 'This is the bottom part.',
+            },
+            x: 0,
+            y: -0.6,
+            internal: false,
+          },
+        ],
+        quiz: [
+          {
+            part: 1,
+            prompt: {
+              child: 'Can you tap the top?',
+              teen: 'Which part is at the top?',
+              adult: 'Locate the upper assembly.',
+              plainWords: 'Tap the top part.',
+            },
+          },
+          {
+            part: 2,
+            prompt: {
+              child: 'Can you tap the middle?',
+              teen: 'Which part carries most of the load?',
+              adult: 'Select the primary structural chassis.',
+              plainWords: 'Tap the middle part.',
+            },
+          },
+          {
+            part: 3,
+            prompt: {
+              child: 'Can you tap the bottom?',
+              teen: 'Which part keeps it balanced?',
+              adult: 'Identify the support base.',
+              plainWords: 'Tap the bottom part.',
+            },
+          },
+        ],
+      }
+    } else {
+      // Text Q&A call (e.g. /api/ask)
+      const res = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: process.env.NVIDIA_TEXT_MODEL || 'meta/llama-3.2-11b-vision-instruct',
+          messages: [{ role: 'user', content: opts.prompt }],
+          temperature: opts.temperature ?? 0.3,
+          max_tokens: opts.maxOutputTokens ?? 600,
+        }),
+      })
+
+      if (!res.ok) throw new Error(`NVIDIA Chat API HTTP ${res.status}`)
+      const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> }
+      const text = data.choices?.[0]?.message?.content || ''
+      console.log('[AI] NVIDIA text response raw:', text)
+      let cleaned = text.trim()
+      const m = /```(?:json)?\s*([\s\S]*?)\s*```/.exec(cleaned)
+      if (m) cleaned = m[1].trim()
+      try {
+        const parsed = JSON.parse(cleaned)
+        return parsed
+      } catch (parseErr) {
+        // If it didn't return valid JSON, or returned a direct answer string:
+        console.warn('[AI] JSON parse failed, returning object with answer = text:', cleaned)
+        return { answer: cleaned, focusPartId: null }
+      }
+    }
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 /**
- * One JSON-mode Gemini call with a hard timeout and thinking disabled (speed).
+ * One JSON-mode AI call with a hard timeout. Supports NVIDIA NIM and Gemini.
  * Throws on missing key, API error, timeout or bad JSON. Returns parsed, unvalidated JSON.
  */
 export async function generateJson(opts: {
@@ -47,6 +256,17 @@ export async function generateJson(opts: {
   temperature?: number
   maxOutputTokens?: number
 }): Promise<unknown> {
+  const nvidiaKey = getEnvKey('NVIDIA_API_KEY')
+  if (nvidiaKey) {
+    try {
+      return await callNvidiaJson(opts)
+    } catch (nvidiaErr) {
+      console.warn('[AI] NVIDIA NIM call failed:', nvidiaErr instanceof Error ? nvidiaErr.message : String(nvidiaErr))
+      if (!getEnvKey('GEMINI_API_KEY')) throw nvidiaErr
+      console.warn('[AI] Falling back to Gemini...')
+    }
+  }
+
   const ai = getClient()
   const controller = new AbortController()
   let timer: ReturnType<typeof setTimeout> | undefined
