@@ -8,17 +8,22 @@
     "start": "next start"
   },
   "dependencies": {
+    "@google/genai": "^1.20.0",
     "@k-id/core": "file:./k-id-core-web.tgz",
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.2",
+    "canvas-confetti": "^1.9.4",
     "next": "15.5.4",
     "react": "19.1.1",
     "react-dom": "19.1.1",
-    "@google/genai": "^1.20.0",
-    "@google/model-viewer": "^4.1.0"
+    "three": "^0.183.2"
   },
   "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/three": "^0.183.1",
     "typescript": "^5"
   }
 }

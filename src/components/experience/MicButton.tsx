@@ -1,14 +1,17 @@
-// Push-to-talk -> /api/voice (Modulate). Owner: Sruthi
+// Hold-to-talk -> /api/voice (Modulate). Moved here from src/components/MicButton.tsx.
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
 import { postForm } from '@/lib/api'
 import type { VoiceResponse } from '@/lib/types'
+import s from './experience.module.css'
 
 interface Props {
   isMinor: boolean
   disabled?: boolean
   onResult: (v: VoiceResponse) => void | Promise<void>
+  onStart?: () => void
+  onError?: (msg: string) => void
 }
 
 function pickMime(): string | undefined {
@@ -19,34 +22,44 @@ function pickMime(): string | undefined {
   return undefined
 }
 
-export function MicButton({ isMinor, disabled, onResult }: Props) {
+export default function MicButton({ isMinor, disabled, onResult, onStart, onError }: Props) {
   const [state, setState] = useState<'idle' | 'recording' | 'sending'>('idle')
-  const [err, setErr] = useState<string | null>(null)
   const recRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const chunksRef = useRef<Blob[]>([])
-  const heldRef = useRef(false) // still holding the button?
+  const heldRef = useRef(false)
+  const aliveRef = useRef(true)
 
   const release = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop())
     streamRef.current = null
   }
-  useEffect(() => () => { recRef.current?.state === 'recording' && recRef.current.stop(); release() }, [])
+  useEffect(() => {
+    aliveRef.current = true
+    return () => {
+      aliveRef.current = false
+      if (recRef.current?.state === 'recording') recRef.current.stop()
+      release()
+    }
+  }, [])
 
   const send = async (blob: Blob) => {
+    if (!aliveRef.current) return
     if (blob.size < 1000) {
       setState('idle')
-      setErr('That was too short. Hold the button while you talk.')
+      onError?.('That was too short. Hold the button while you talk.')
       return
     }
     setState('sending')
     const form = new FormData()
-    form.append('audio', blob, 'speech.webm')
+    const ext = blob.type.includes('mp4') ? 'm4a' : 'webm'
+    form.append('audio', blob, `speech.${ext}`)
     form.append('isMinor', String(isMinor))
     const res = await postForm<VoiceResponse>('/api/voice', form)
+    if (!aliveRef.current) return
     setState('idle')
     if (!res.ok) {
-      setErr(`Couldn't hear you (${res.error}).`)
+      onError?.("Pip couldn't hear you. Try again?")
       return
     }
     await onResult(res.data)
@@ -54,20 +67,25 @@ export function MicButton({ isMinor, disabled, onResult }: Props) {
 
   const start = async () => {
     if (state !== 'idle' || disabled) return
-    setErr(null)
     heldRef.current = true
+    onStart?.()
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-      setErr('This browser cannot record audio.')
+      onError?.('This browser cannot record audio. You can type instead.')
       return
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       streamRef.current = stream
-      if (!heldRef.current) { release(); return } // let go before the mic opened
+      if (!heldRef.current || !aliveRef.current) {
+        release()
+        return
+      }
       const mimeType = pickMime()
       const rec = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
       chunksRef.current = []
-      rec.ondataavailable = (e) => { if (e.data.size) chunksRef.current.push(e.data) }
+      rec.ondataavailable = (e) => {
+        if (e.data.size) chunksRef.current.push(e.data)
+      }
       rec.onstop = () => {
         release()
         void send(new Blob(chunksRef.current, { type: rec.mimeType || 'audio/webm' }))
@@ -78,7 +96,11 @@ export function MicButton({ isMinor, disabled, onResult }: Props) {
     } catch (e) {
       release()
       setState('idle')
-      setErr(e instanceof Error && e.name === 'NotAllowedError' ? 'Microphone permission was denied.' : 'Could not start the microphone.')
+      onError?.(
+        e instanceof Error && e.name === 'NotAllowedError'
+          ? 'The microphone is blocked. You can allow it in your browser, or type instead.'
+          : 'Could not start the microphone.',
+      )
     }
   }
 
@@ -89,19 +111,21 @@ export function MicButton({ isMinor, disabled, onResult }: Props) {
   }
 
   return (
-    <div className="curio-mic-wrap">
-      <button
-        className={`curio-btn curio-mic${state === 'recording' ? ' recording' : ''}`}
-        disabled={disabled || state === 'sending'}
-        onPointerDown={(e) => { e.preventDefault(); void start() }}
-        onPointerUp={end}
-        onPointerLeave={end}
-        onPointerCancel={end}
-        onContextMenu={(e) => e.preventDefault()}
-      >
-        {state === 'recording' ? 'Listening… let go to send' : state === 'sending' ? 'Thinking…' : 'Hold to talk'}
-      </button>
-      {err && <p className="curio-error">{err}</p>}
-    </div>
+    <button
+      type="button"
+      className={`${s.mic}${state === 'recording' ? ` ${s.micRec}` : ''}`}
+      disabled={disabled || state === 'sending'}
+      onPointerDown={(e) => {
+        e.preventDefault()
+        void start()
+      }}
+      onPointerUp={end}
+      onPointerLeave={end}
+      onPointerCancel={end}
+      onContextMenu={(e) => e.preventDefault()}
+      aria-label="Hold to talk to Pip"
+    >
+      {state === 'recording' ? '🔴 Let go' : state === 'sending' ? '…' : '🎤 Hold'}
+    </button>
   )
 }

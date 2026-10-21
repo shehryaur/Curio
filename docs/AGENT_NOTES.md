@@ -137,3 +137,158 @@ page.tsx (useCurioSession = all state)
 - `.glb` files: stage HEADs `PROP_PRESETS[type].modelUrl`; missing/404/model 'error' -> placeholder panel (pins still work). Hotspot coords in propPresets are placeholders.
 - Persona switcher can "upgrade" a real minor to Adult (demo by design) - hide it for production.
 - Hazard unlock is in-memory only (resets on reload).
+
+## Backend agent: Gemini routes v2 (analyze → ObjectLesson, ask personalization)
+Files: `src/lib/gemini.ts`, `src/app/api/analyze/route.ts`, `src/app/api/ask/route.ts`, `src/lib/fallbackLesson.ts` (new). `src/lib/fallbackTours.ts` is DELETED (old PropType tours) — frontend must not import it.
+
+**POST /api/analyze** `{ imageBase64, mode, name?, interests? }` → `AnalyzeResponse { lesson, matchedTemplate, needsModel }` (always HTTP 200 unless the body is bad).
+- One Gemini call (`GEMINI_MODEL` ?? `gemini-2.5-flash`), JSON mode + compact responseSchema, `thinkingBudget: 0`, 25s timeout (AbortController + race).
+- The schema's `matchedTemplate` enum is built per request from templates that actually exist in `TEMPLATES` (missing ones are never matched). When matched, the model is told to return empty parts/quiz, so the match path is fast.
+- Matched → `{ lesson: getTemplateLesson(id) (intro gets "Hi <name>!" when name given), matchedTemplate: id, needsModel: false }`.
+- Not matched → `kind:'photo'`, `source:'gemini'`, `id` = uuid, 3–5 parts `p1..pN`, every ByMode filled (missing modes copied from the nearest mode; child learn clamped to 20 words), `anchor` = [x,y from photo position clamped -1..1, z 0.8 visible / 0 internal], optional `safetyTip` (never a lock), exactly 3 quiz items with existing `answerPartId` (padded with generated "Can you tap the …?" questions if needed), `needsModel: true`.
+- Interests: ONE interest woven into intros as an analogy. Name optional in the intro.
+- Any failure (no key / API error / timeout / bad JSON) → `getFallbackLesson(name)` ("Mystery object", parts p1 top / p2 middle / p3 bottom with anchors y 0.7 / 0 / -0.7, 3 quiz items), `source:'fallback'`, `needsModel: true`, `matchedTemplate: null`.
+- 400 bad body / invalid base64, 413 when imageBase64 > 10M chars (~7.5MB). Logs: `[analyze] ok <template|photo> in Nms` / `[analyze] Gemini failed after Nms: <message>`.
+
+**POST /api/ask** `{ question, objectTitle, mode, name?, interests? }` → `{ answer, source }`. thinkingBudget 0, 12s timeout. Child/teen: explains how things work but never gives steps to open/tamper with batteries, electrics, blades, hot parts — suggests a grown-up. No refusals for ordinary curiosity.
+
+## Content agent: template lessons (`src/lib/templates.ts`)
+- Full `ObjectLesson`s for all 6 templates (bottle, book, phone, charger, mug, pencil). The exports and signatures match the stub: `TEMPLATE_ORDER`, `TEMPLATES`, `getTemplateLesson(id)` (returns a structuredClone). It is plain data and safe on client and server.
+- Part ids match `TEMPLATE_PART_IDS` exactly and in order. Each lesson has 3 quiz questions with valid `answerPartId`. Every ByMode has all 4 modes filled. Each lesson has a `causeAndEffect` chain.
+- Checked: every `short` (all modes) is 3-5 words, every child `learn` is 20 words or fewer, and no ByMode is empty.
+- `safetyTip` (friendly, never a lock) is on: bottle.body (don't refill single-use bottles), phone.battery (Li-ion: bend/puncture/pillow/swelling), charger.prongs, mug.rim + mug.body (hot drinks), pencil.tip (sharp).
+- Quiz answers: bottle cap/body/base; book spine/pages/bookmark; phone screen/charging-port/battery; charger prongs/casing/usbc-port; mug handle/rim/base; pencil eraser/ferrule/tip.
+
+## Onboarding + k-ID agent
+**Files:** `src/components/KidRoot.tsx`, `src/components/onboarding/{OnboardingContext,Gate,OnboardingChat}.tsx` + `Onboarding.module.css`,
+`src/components/ProfileProvider.tsx`, `src/components/SettingsPanel.tsx`, `src/lib/kidStorage.ts`. The drop-in `<KidAgeGate>` is gone:
+k-ID runs in headless (Tier 3) mode behind a Pip chat (name → [country if auto fails] → age or birthday → interests → grown-up email → wait).
+
+**Tree**
+```
+KidCoreProvider(kidConfig)
+└─ OnboardingContext (jurisdiction 'auto'|code, age, email, draft — state lives in KidRoot)
+   └─ KidSessionProvider key={n} jurisdiction age email sessionId challengeId onSession onChallenge onClaim(/api/kid/claim)
+      └─ Gate: saved profile+session & pass → app | else <OnboardingChat/> → saveProfile → app
+         app = KidSettingsProvider(sessionId, settings challengeId persisted) → ProfileProvider → {children}
+```
+- **For the experience agent:** `import { useProfile } from '@/components/ProfileProvider'` →
+  `{ profile, setMode, resetMode, startOver, baseMode, isModeOverridden }`. `profile.mode` is the EFFECTIVE mode (override applied);
+  `setMode('plainWords')` is per-visit only. `useKidPermissionSettings()` / `<KidSettings/>` / `useKidPermission()` / `useKidSession()` work anywhere in
+  the app (both providers are mounted above it). `SettingsPanel({ onClose })` kept its signature; it now shows the profile + `<KidSettings/>` + Start over.
+- Age signal: `{ age }` unless `requirements.approvedAgeCollectionMethods` lacks `age-slider` (then a date input → `{ dateOfBirth }`).
+  The age prop is set right after the age answer, so the k-ID check runs while the player picks interests.
+- Unresolved `auto` jurisdiction: the SDK doesn't expose `step` publicly, so the chat mounts a hidden `<KidSelectJurisdiction/>` as a probe
+  (it renders only during the jurisdiction step) and shows its own searchable list from `useKidJurisdictions()`; the pick goes in the `jurisdiction` prop.
+- Consent send: `setEmail` → wait one tick (provider's configure effect runs after child effects) → `submit()`; resend = `submit()` again.
+- Persistence: `curio.kid.sessionId`, `.challengeId`, `.settingsChallengeId`, plus `curio.onboarding.draft` (name/age/dob/interests/jurisdiction/email)
+  so a pending consent survives reload. Session without profile → everything cleared. Resumed challenges ignore new props in the SDK, so
+  "Change email" on a resumed request starts a fresh request with the same answers (remount). fail → Try again (clear ids, remount, keep answers);
+  error → Retry (remount; same ids when resuming).
+
+## Experience agent (main app screens) — supersedes the "Frontend agent" section above
+**Files:** `src/app/page.tsx`, `src/hooks/{useProgress,useSpeaker,useMeshyModel,useGrownupAsk}.ts`, `src/lib/progress.ts` (new),
+`src/lib/api.ts` + `src/lib/speak.ts` (unchanged), `src/components/experience/*` (TopBar, HomeScreen, PhotoFlow, CameraView,
+GrownupAsk, ObjectScreen, LearnPanel, QuizPanel, ExplorePanel, AskPip, MicButton, shared.ts, experience.module.css).
+Deleted: `src/hooks/useCurioSession.ts`, `src/components/{KidTopBar,GuardianModal,CameraScanner,MicButton}.tsx`.
+No change to types.ts.
+
+**Screens:** page.tsx holds `screen = home | photo | object` + the Meshy job (so it survives the Settings overlay).
+Settings opens `SettingsPanel` in an overlay sheet; the Object screen goes quiet while it is open.
+Top bar: wordmark, "Hi {name}", XP + streak pills (`useProgress`), ⚙️, and "Plain words mode · back to normal" when
+`isModeOverridden && mode === 'plainWords'` (resetMode).
+
+**Permissions (k-ID only):** `useGrownupAsk(names)` — missing = not enabled in `useKidPermission()` nor in `useKidPermissionSettings().permissions`.
+PLAYER-managed ones are switched on with `change(name, true)`; the rest go in ONE `upgrade(names, email?)` (email asked inline when
+`hasApproverEmail` is false); then polls `useKidSession().refresh()` + settings `refresh()` every 4s until on. PROHIBITED -> kind "not available
+where you live" + pick an object. Photo flow: no camera-access -> ask for all missing of camera-access/ai-media-upload/ai-media-generation
+(continues as soon as camera-access is on) -> camera (rear, JPEG <=768px q0.8, file-picker fallback on deny/no camera) -> preview ->
+if upload/generation still missing ask again -> auto-continues with the held photo -> POST /api/analyze (name/interests only with
+personalized-recommendations). matchedTemplate -> `getTemplateLesson`; else lesson + photoUrl, and if `needsModel` + ai-media-generation,
+`useMeshyModel.start(photo)` (POST, poll every 5s, glbUrl = proxyUrl ?? `/api/meshy?proxy=<id>`; FAILED/UNAVAILABLE -> keeps photo + note).
+
+**Object screen:** ObjectViewer via next/dynamic (ssr:false). Learn = interaction 'none' + focusPartId; Quiz = 'click'; Explore = 'hover' +
+showLabels + explode slider (only when `lesson.templateId` and no glb). One `useSpeaker()` per object screen: every line cancels the
+previous; tab switch / unmount / settings stop it. Learn never autoplays (starts on the Play tap). Learn finish +10 XP (once per visit);
+each correct quiz answer +10 XP; quiz end `recordStreakDay()`. Ask Pip: text gated by ai-chat, hold-to-talk by ai-voice-mode;
+voice `isFrustrated` -> `setMode('plainWords')`, reassurance line, focus+highlight part 1, then answers in plainWords.
+Progress lives in localStorage `curio.progress` `{xp, streak, lastDay}`; a streak that missed a day displays as 0.
+
+**For the integrator:** `src/lib/propPresets.ts` (not mine) still imports the removed `PropType` and breaks `tsc`/`next build`;
+nothing imports it — delete it (the build passes without it).
+
+## 3D + visuals agent (ObjectViewer, models, Pip)
+**Files:** `src/components/three/ObjectViewer.tsx` (default export, `ObjectViewerProps`), `three/ViewerLoading.tsx`, `three/partContext.tsx` (Part / Normalize / context),
+`three/models/{Bottle,Book,Phone,Charger,Mug,Pencil}.tsx` + `models/index.ts` (`TEMPLATE_MODELS`), `three/GlbModel.tsx`, `three/PhotoPins.tsx`, `three/ObjectViewer.module.css`,
+`src/components/Pet.tsx` + `Pet.module.css`. Deleted `src/components/Curio3DStage.tsx`.
+
+**Load it:** `const ObjectViewer = dynamic(() => import('@/components/three/ObjectViewer'), { ssr: false, loading: () => <ViewerLoading /> })`
+(`import ViewerLoading from '@/components/three/ViewerLoading'`, safe to import statically). Give the parent a height (it fills 100% x 100%, min-height 320px, inherits border-radius).
+
+**Render choice:** glbUrl loaded OK -> GLB + numbered pins at `part.anchor` · else `lesson.templateId` -> procedural model · else PhotoPins (photo, or the lesson emoji if no photo).
+While a glbUrl downloads: photo + pins with a "Building your 3D model…" chip (or the template model, or the loading card). GLB fetch errors / WebGL failure fall back silently (console.warn only).
+GLB is loaded with GLTFLoader (no Draco, no CDN). No HDR/fonts downloaded.
+
+**Behavior:**
+- `interaction='hover'`: hover highlights + `onPartHover(id|null)`; with `showLabels` a card shows `name[mode]` + `short[mode]`. A tap/click ALSO calls `onPartClick` (touch devices have no hover) and pins the label.
+- `'click'`: hover glow + `onPartClick(id)` (front-most part only; drags > 8px are ignored).
+- `'none'`: no events, slow auto-rotate unless `focusPartId` set.
+- Drag rotates in every mode; wheel/pinch zoom limited; no panning.
+- `focusPartId`: camera eases to that part (phone battery is viewed from the back through the tinted cover) + soft glow. `null` -> eases back to the default view.
+- `highlightPartId`: strong pulsing green glow (correct answer). Works with GLB/photo pins too.
+- `explode` 0..1 (templates only): parts slide apart along per-part vectors; camera backs off.
+- `onPartHover` fires only on changes. Keyboard: hidden buttons per part in click/hover modes; photo pins are real buttons.
+- Part ids are EXACTLY `TEMPLATE_PART_IDS`.
+
+**Pet:** `<Pet mood="idle|talking|happy|thinking|oops" message? size="sm|md|lg" />` (48/88/140px). Bubble is right of Pip, below it at <=640px. Respects prefers-reduced-motion.
+
+## Meshy model choice (integrator, verified live)
+- Default preset: `model_type: smart-topology`, `ai_model: meshy-t2`, `target_polycount: 15000`, `should_texture: true`,
+  `texture_resolution: 2k`, `target_formats: ['glb']`, PBR off. Fallback on a 400: `standard` + `meshy-6-lite`.
+- Live test (canvas apple): created in 0.5s, SUCCEEDED in 31s, proxy served a 1.7 MB textured GLB (15.8k tris) in 0.36s.
+- Override with `MESHY_AI_MODEL` (e.g. `meshy-7.1` for max quality, ~2 min, 30 credits).
+
+## Content agent, round 2: camera lesson, age tiers, sources (`src/lib/templates.ts`)
+- Added the `camera` lesson (📷, antique wooden bellows view camera). Parts are lens, bellows, body, back, tripod. Quiz answers are lens (child "Can you tap the camera's eye?"), bellows (teen: "Your photo is blurry..."), and tripod. The tripod has a friendly pinch-point safety tip. `causeAndEffect` matches the spec.
+- `TEMPLATE_ORDER` = bottle, camera, book, phone, charger, mug, pencil.
+- All templates follow docs/AGE_TIERS.md:
+  - child `learn` is one playful sentence of 15 words or fewer.
+  - `short` lengths: child/plainWords 3-5 words, teen 5-8 (science), adult 12 or fewer (spec).
+  - Teen quiz prompts are troubleshooting scenarios, and teen praise is a one-sentence science explanation.
+  - Adult quiz is an operational/safety check.
+  - plainWords quiz starts "Let's try it together: tap ...", and plainWords learn is "Step N: ...", numbered in part order.
+- Every lesson has `sources`: 3 en.wikipedia.org article URLs each, no fragments. I spot-checked several and they resolve.
+- The validator (~/chk/check.ts on the device, run with `node check.ts`) checks all of the above and passes.
+- FYI to other owners: tsc still flags `camera` missing in `components/three/models/index.ts` and `lib/gemini.ts` (Record<TemplateId,...>). templates.ts has no errors.
+
+### Backend agent, round 2
+- **analyze**: the `camera` template can now be matched ("any standalone camera: DSLR, compact, film, instant, antique bellows; NOT a phone"). Only templates that exist in `TEMPLATES` can be matched. Photo lessons follow AGE_TIERS:
+  - child `learn` ≤ 15 words; it is cut at a sentence boundary or with dangling filler words removed.
+  - `short`: child and plainWords 3–5 words, teen 5–8, adult ≤ 12.
+  - Quiz prompts: child "Can you tap the …?"; teen is a troubleshooting scenario; adult is an operational or safety check; plainWords is "Let's try it together: tap the …".
+  - `hint` is the part's `short` text and `praise` is built locally per mode, so Gemini no longer writes them.
+  - Photo lessons never get `sources`.
+  - The first interest is put into every intro as a comparison.
+- **Speed**: Gemini no longer writes quiz hints/praise, the prompt asks for 3 parts by default (4 only when needed), strings are shorter, and `maxOutputTokens` is 3000. Photo-lesson latency went from 10.3s to 5.9 / 6.4 / 6.5s across three lamp runs. One outlier took 11s, likely rate-limit queuing. Template matches: bottle 1.5s, camera 0.9s (7.8s on the first call right after hot reload).
+- **ask**: accepts `parts: {id,name}[]` (up to 12, cleaned) and returns `focusPartId`. The schema enum is the given ids plus "none". The route checks the id against `parts` and returns null otherwise (always null when no parts are sent).
+- **Reliability**: `generateJson` retries once after 900ms on 429/5xx/UNAVAILABLE when less than half the timeout has passed. In dev only (NODE_ENV !== 'production'), fallback responses carry an `x-curio-error` header with the Gemini error text (keys removed) for debugging.
+- **QUOTA**: during testing Gemini started returning **429 "You exceeded your current quota"** on most calls, even after waiting about 40s. Five agents share one key, so this is either the per-minute or the daily free-tier limit. The app still works (fallback lesson or answer), but for the demo use a paid key, or set `GEMINI_MODEL` to a model with a higher free quota.
+
+### Onboarding round 2 (country, limited mode while consent is pending, demo helpers)
+- Chat order: name → age (number) → "And which country are you exploring from?" (chips US/GB/KR/IN/PK/DE, "Somewhere else" = searchable
+  `useKidJurisdictions()` list, "Not sure" = `'auto'`) → US: "Which state?" searchable list of US-xx (Skip = plain 'US') → k-ID rules load
+  → birthday only if the jurisdiction approves date-of-birth but not age → interests → check → (consent) parent email → app.
+- `jurisdiction` prop is undefined until answered (so k-ID fetches the rules for the CHOSEN code, not the IP), then the code; 'auto' only via
+  "Not sure" (if auto can't resolve, the country list is shown). Last resort: if k-ID errors on plain 'US', the provider is remounted with
+  `US-CA` (console.warn `[curio] ... US-CA (last resort)`).
+- Consent no longer blocks: once the parent email is sent (status 'pending') the Profile is saved and the app opens in LIMITED mode
+  (`kid.ready === false`). A slim sticky banner "Waiting for your grown-up to say yes ✉️ · Resend" is rendered by ProfileProvider above
+  the app. On approval the session appears and the app upgrades in place (no remount: KidSettingsProvider is mounted as a SIBLING of the
+  app and bridged into `useGrownupSettings()`). fail / prohibited still show Pip screens (Try again / Start over). Reload while pending →
+  straight back into the limited app (challengeId + draft email resume; Resend works).
+- `useGrownupSettings()` (from ProfileProvider.tsx) = `useKidPermissionSettings()` value or `null` while no session — never throws. Use it
+  instead of `useKidPermissionSettings()` in app code (useGrownupAsk). SettingsPanel mounts its own KidSettingsProvider only when
+  `kid.sessionId` exists.
+- Demo helpers (only when IS_DEMO): `switchDemoPersona(id|null)`, `demoApproved`, `demoApprove(names)`, all in memory; `effectiveCan(name)` =
+  real permission (session or settings) OR demo approval. Not in demo, it is just the real permission.
+- Pip bubbles use `var(--pip, #ce82ff)` for the border (falls back until the experience agent adds the token).

@@ -1,140 +1,127 @@
 'use client'
-
-import { useState } from 'react'
-import { KidPermission } from '@k-id/core'
+// Curio main app: Home -> (photo flow) -> Object screen (Learn / Quiz / Explore). Owner: experience agent.
+import { useCallback, useEffect, useState } from 'react'
+import { useProfile } from '@/components/ProfileProvider'
 import { SettingsPanel } from '@/components/SettingsPanel'
-import { KidTopBar } from '@/components/KidTopBar'
-import { CameraScanner } from '@/components/CameraScanner'
-import { Curio3DStage } from '@/components/Curio3DStage'
-import { GuardianModal } from '@/components/GuardianModal'
-import { MicButton } from '@/components/MicButton'
-import { useCurioSession } from '@/hooks/useCurioSession'
+import GrownupDashboard from '@/components/experience/GrownupDashboard'
+import HomeScreen from '@/components/experience/HomeScreen'
+import ObjectScreen from '@/components/experience/ObjectScreen'
+import PhotoFlow, { type PhotoResult } from '@/components/experience/PhotoFlow'
+import TopBar from '@/components/experience/TopBar'
+import s from '@/components/experience/experience.module.css'
+import { useMeshyModel } from '@/hooks/useMeshyModel'
+import { getTemplateLesson } from '@/lib/templates'
+import type { ObjectLesson, TemplateId } from '@/lib/types'
 
-function Locked({ what }: { what: string }) {
-  return <div className="curio-locked">{what} is turned off. A grown-up can turn it on in Settings.</div>
-}
+type Screen =
+  | { kind: 'home' }
+  | { kind: 'photo' }
+  | { kind: 'object'; lesson: ObjectLesson; photoUrl: string | null; key: number }
 
 export default function Home() {
+  const { profile, setMode } = useProfile()
+  const mode = profile.mode
+  const [screen, setScreen] = useState<Screen>({ kind: 'home' })
   const [showSettings, setShowSettings] = useState(false)
-  const [question, setQuestion] = useState('')
-  const c = useCurioSession()
+  const [showDash, setShowDash] = useState(false)
 
-  if (showSettings) return <SettingsPanel onClose={() => setShowSettings(false)} />
+  // Tier tokens (senior: 18px base + high contrast) live on <html data-mode> so overlays get them too.
+  useEffect(() => {
+    document.documentElement.dataset.mode = mode
+    return () => {
+      delete document.documentElement.dataset.mode
+    }
+  }, [mode])
+  useEffect(() => {
+    if (mode !== 'adult') setShowDash(false)
+  }, [mode])
+  const meshy = useMeshyModel()
 
-  const activeStepObj = c.analysis?.steps.find((s) => s.stepNumber === c.activeStep)
+  const goHome = useCallback(() => {
+    meshy.reset()
+    setScreen({ kind: 'home' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meshy.reset])
+
+  const openTemplate = (id: TemplateId) => {
+    meshy.reset()
+    let lesson: ObjectLesson | null = null
+    try {
+      lesson = getTemplateLesson(id)
+    } catch {
+      lesson = null
+    }
+    if (!lesson) return
+    setScreen({ kind: 'object', lesson, photoUrl: null, key: Date.now() })
+    window.scrollTo({ top: 0 })
+  }
+
+  const onPhotoLesson = useCallback(
+    (r: PhotoResult) => {
+      meshy.reset()
+      setScreen({ kind: 'object', lesson: r.lesson, photoUrl: r.photoUrl, key: Date.now() })
+      if (r.buildModel && r.photoUrl) void meshy.start(r.photoUrl)
+      window.scrollTo({ top: 0 })
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [meshy.reset, meshy.start],
+  )
 
   return (
-    <main className="curio-app">
-      <KidTopBar
-        personaId={c.personaId}
-        onPersona={c.setPersona}
-        kidMode={c.kidMode}
-        mode={c.mode}
-        personalized={c.personalized}
-        onSettings={() => { c.stop(); setShowSettings(true) }}
-      />
-
-      {c.modeOverride === 'plainWords' && c.personalized && (
-        <div className="curio-badge big curio-row">
-          <span>Plain words mode</span>
-          <button className="curio-btn ghost" onClick={c.clearModeOverride}>
-            Back to normal
-          </button>
+    <div className={s.app} data-mode={mode}>
+      <TopBar onSettings={() => setShowSettings(true)} onDashboard={() => setShowDash(true)} />
+      <main className={s.main}>
+        {screen.kind === 'home' && (
+          <HomeScreen onSnap={() => setScreen({ kind: 'photo' })} onTemplate={openTemplate} />
+        )}
+        {screen.kind === 'photo' && (
+          <>
+            <div className={s.backRow}>
+              <button className={s.backBtn} onClick={goHome}>
+                ← Home
+              </button>
+            </div>
+            <PhotoFlow profile={profile} mode={mode} onLesson={onPhotoLesson} onCancel={goHome} />
+          </>
+        )}
+        {screen.kind === 'object' && (
+          <ObjectScreen
+            key={screen.key}
+            lesson={screen.lesson}
+            mode={mode}
+            profile={profile}
+            photoUrl={screen.photoUrl}
+            meshy={meshy}
+            suspended={showSettings || showDash}
+            onBack={goHome}
+            onFrustrated={() => setMode('plainWords')}
+          />
+        )}
+      </main>
+      {showDash && (
+        <div
+          className={s.sheetBackdrop}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowDash(false)
+          }}
+        >
+          <div className={s.sheet} role="dialog" aria-modal="true" aria-label="Grown-up dashboard">
+            <GrownupDashboard onClose={() => setShowDash(false)} />
+          </div>
         </div>
       )}
-
-      {/* Scanner: camera needs camera-access AND ai-media-upload (gated inside); demo objects always work */}
-      <CameraScanner busy={c.analyzing} error={c.analyzeError} onAnalyze={(i) => void c.analyze(i)} />
-
-      {/* 3D tour: personalized lessons when allowed, standard lessons otherwise */}
-      <section className="curio-card">
-        <h2>Guided tour{c.analysis ? `: ${c.analysis.objectTitle}` : ''}</h2>
-        <KidPermission name="personalized-recommendations" fallback={<p>Standard lesson for everyone.</p>}>
-          <p>Lesson adapted to your age and how you&apos;re feeling.</p>
-        </KidPermission>
-        {c.analysis ? (
-          <>
-            {c.analysis.source === 'fallback' && <p className="curio-note">Using a ready-made tour.</p>}
-            {c.mode === 'teen' && c.analysis.causeAndEffectChainForTeen && (
-              <p className="curio-chain">{c.analysis.causeAndEffectChainForTeen}</p>
-            )}
-            <Curio3DStage
-              analysis={c.analysis}
-              mode={c.mode}
-              activeStep={c.activeStep}
-              isStepLocked={c.isStepLocked}
-              onPin={c.selectPin}
-              subtitle={c.subtitle}
-              isSpeaking={c.isSpeaking}
-              lastImage={c.lastImage}
-            />
-            <div className="curio-row curio-wrap">
-              {c.tourPlaying || c.isSpeaking ? (
-                <button className="curio-btn" onClick={c.stop}>
-                  ■ Stop
-                </button>
-              ) : (
-                <button className="curio-btn" onClick={() => void c.playTour()}>
-                  ▶ Play guided tour
-                </button>
-              )}
-              {c.isMinor && !c.hazardsUnlocked && c.analysis.steps.some((s) => s.isHazardForChild) && (
-                <button className="curio-btn ghost" onClick={c.openGuardian}>
-                  🔒 Grown-up unlock
-                </button>
-              )}
-              {c.hazardsUnlocked && <span className="curio-badge">Safety lessons unlocked</span>}
-            </div>
-            {c.speechNote && <p className="curio-note">{c.speechNote}</p>}
-          </>
-        ) : (
-          <p>Snap a photo or pick a demo object to start.</p>
-        )}
-      </section>
-
-      {/* Ask the owl: typed and voice */}
-      <section className="curio-card">
-        <h2>Ask the owl</h2>
-        <KidPermission name="ai-chat" fallback={<Locked what="Chatting with the owl" />}>
-          <form
-            className="curio-row"
-            onSubmit={(e) => {
-              e.preventDefault()
-              const q = question
-              setQuestion('')
-              void c.askOwl(q)
-            }}
-          >
-            <input
-              className="curio-input"
-              placeholder="What does this part do?"
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              maxLength={500}
-            />
-            <button className="curio-btn" type="submit" disabled={c.asking || !question.trim()}>
-              Ask
-            </button>
-          </form>
-        </KidPermission>
-        <KidPermission name="ai-voice-mode" fallback={<Locked what="Talking to the owl" />}>
-          <MicButton isMinor={c.isMinor} disabled={c.asking} onResult={c.handleVoice} />
-          {c.lastTranscript !== null && (
-            <p>
-              You said: &ldquo;{c.lastTranscript}&rdquo;
-              {c.lastEmotion ? ` (sounds ${c.lastEmotion.toLowerCase()})` : ''}
-            </p>
-          )}
-          {c.voiceNote && <p className="curio-note">{c.voiceNote}</p>}
-        </KidPermission>
-        {c.asking && <p>The owl is thinking…</p>}
-        {c.askError && <p className="curio-error">{c.askError}</p>}
-        {c.lastAnswer && <p className="curio-answer">🦉 {c.lastAnswer}</p>}
-      </section>
-
-      {c.guardianOpen && (
-        <GuardianModal partName={activeStepObj?.partName} onUnlock={c.unlockHazards} onCancel={c.closeGuardian} />
+      {showSettings && (
+        <div
+          className={s.sheetBackdrop}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowSettings(false)
+          }}
+        >
+          <div className={s.sheet} role="dialog" aria-modal="true" aria-label="Settings">
+            <SettingsPanel onClose={() => setShowSettings(false)} />
+          </div>
+        </div>
       )}
-    </main>
+    </div>
   )
 }
