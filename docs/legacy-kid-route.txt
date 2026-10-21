@@ -1,0 +1,1 @@
+// Superseded: k-ID now runs through @k-id/core in the browser + /api/kid/claim on the server.
