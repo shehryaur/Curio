@@ -125,3 +125,932 @@
   .tabActive { box-shadow: 0 3px 0 0 var(--accent-deep); }
   .wordmark { font-size: 18px; }
 }
+
+/* =========================================================
+   PAGE 1 INSPIRATION & DECK & PET CLOUD STYLES
+   ========================================================= */
+
+/* ---- Topbar Cards Pill ---- */
+.cardsPill {
+  appearance: none;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  border-radius: 999px;
+  padding: 5px 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  margin-left: auto;
+}
+.cardsPill:hover {
+  background: var(--bg-alt);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+/* ---- Home Screen Layout (Page 1) ---- */
+.homeContainer {
+  display: grid;
+  gap: 20px;
+  padding: 4px 0 16px;
+}
+
+.headerHero {
+  display: grid;
+  gap: 4px;
+}
+
+.mainHeadline {
+  font-family: 'Nunito', var(--font-heading, system-ui, sans-serif);
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: var(--text);
+  margin: 0;
+}
+
+.mainSubhead {
+  font-size: 16px;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin: 0;
+}
+
+/* ---- Discovery Grid (Page 1) ---- */
+.discoveryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.discoveryCard {
+  appearance: none;
+  border: 0;
+  border-radius: 20px;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  min-height: 125px;
+  cursor: pointer;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.discoveryCard:hover {
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.14);
+}
+
+.discoveryCard:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+.discoveryEmoji {
+  font-size: 36px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.15));
+}
+
+.discoveryTitle {
+  font-family: 'Nunito', var(--font-heading, system-ui, sans-serif);
+  font-weight: 800;
+  font-size: 18px;
+  line-height: 1.25;
+  text-align: left;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* ---- Camera CTA Box (Page 1) ---- */
+.cameraCardBox {
+  border: 2px dashed #d1cfc7;
+  border-radius: 24px;
+  padding: 20px 16px;
+  display: grid;
+  gap: 10px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(8px);
+}
+
+.cameraCtaBtn {
+  appearance: none;
+  border: 0;
+  background: #1e1b2e; /* dark pill button like Page 1 */
+  color: #ffffff;
+  border-radius: 16px;
+  padding: 16px 24px;
+  font-family: 'Nunito', var(--font-heading, system-ui, sans-serif);
+  font-weight: 800;
+  font-size: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(30, 27, 46, 0.2);
+  transition: all 0.18s ease;
+  width: 100%;
+}
+
+.cameraCtaBtn:hover {
+  background: #2b2742;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(30, 27, 46, 0.28);
+}
+
+.cameraCtaBtn:active {
+  transform: translateY(1px);
+}
+
+.cameraCtaIcon {
+  font-size: 18px;
+}
+
+.cameraSubtext {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.pipSection {
+  margin-top: 4px;
+}
+
+/* ---- Pip Pet with Thought Cloud ---- */
+.petCloudContainer {
+  background: #ffffff;
+  border: 1.5px solid var(--border);
+  border-radius: 24px;
+  padding: 16px 18px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+
+.petCloudRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.petAvatarWrap {
+  flex-shrink: 0;
+}
+
+.thoughtCloud {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+.cloudBubble {
+  background: #fbfbf9;
+  border: 1.5px solid #e6e4dd;
+  border-radius: 20px;
+  padding: 14px 16px;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.cloudBubble::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 24px;
+  width: 12px;
+  height: 12px;
+  background: #fbfbf9;
+  border-left: 1.5px solid #e6e4dd;
+  border-bottom: 1.5px solid #e6e4dd;
+  transform: rotate(45deg);
+}
+
+.cloudContent {
+  display: grid;
+  gap: 10px;
+}
+
+.cloudText {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.cloudVoiceNote {
+  margin: 0;
+  font-size: 13px;
+  color: var(--accent-deep);
+  font-weight: 600;
+  background: var(--accent-soft);
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+
+.askTriggerBtn {
+  appearance: none;
+  border: 1.5px solid #dcdad2;
+  background: #ffffff;
+  color: var(--text);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 14px;
+  border-radius: 999px;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: fit-content;
+  box-shadow: 0 2px 0 0 #dcdad2;
+}
+
+.askTriggerBtn:hover {
+  border-color: var(--accent);
+  color: var(--accent-deep);
+  transform: translateY(-1px);
+}
+
+.askTriggerBtn:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+.cloudMicPill {
+  margin-left: 4px;
+  font-size: 15px;
+}
+
+.cloudForm {
+  display: grid;
+  gap: 10px;
+}
+
+.cloudSuggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cloudChip {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.cloudChip:hover {
+  background: var(--surface);
+  border-color: var(--border-strong);
+}
+
+.cloudInputRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cloudInput {
+  width: 100%;
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 10px 14px;
+  font-family: inherit;
+  font-size: 14px;
+  background: #ffffff;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.cloudInput:focus {
+  border-color: var(--accent);
+}
+
+.cloudActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cloudSendBtn {
+  appearance: none;
+  border: 0;
+  background: var(--accent);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 13px;
+  border-radius: 12px;
+  padding: 8px 16px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 0 var(--accent-deep);
+}
+
+.cloudSendBtn:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+
+.cloudSendBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cloudCloseBtn {
+  appearance: none;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 6px;
+  margin-left: auto;
+}
+
+/* ---- Deck Screen (My Cards) ---- */
+.deckWrap {
+  display: grid;
+  gap: 18px;
+}
+
+.deckHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.deckTitle {
+  font-family: 'Nunito', var(--font-heading, system-ui, sans-serif);
+  font-size: 28px;
+  font-weight: 800;
+  margin: 0;
+  color: var(--text);
+}
+
+.deckSub {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 2px 0 0;
+}
+
+.deckSnapBtn {
+  appearance: none;
+  border: 0;
+  background: #1e1b2e;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 14px;
+  border-radius: 12px;
+  padding: 8px 14px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 0 #0f0c1a;
+}
+
+.filterRow {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.filterChip {
+  appearance: none;
+  border: 1.5px solid var(--border);
+  background: #ffffff;
+  color: var(--text);
+  font-weight: 700;
+  font-size: 13px;
+  border-radius: 999px;
+  padding: 6px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.filterActive {
+  background: var(--text);
+  color: #ffffff;
+  border-color: var(--text);
+}
+
+.deckGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.deckCard {
+  appearance: none;
+  border: 0;
+  border-radius: 20px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 130px;
+  cursor: pointer;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s;
+  text-align: left;
+}
+
+.deckCard:hover {
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.deckCard:active {
+  transform: translateY(1px);
+}
+
+.deckCardTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.deckCardEmoji {
+  font-size: 36px;
+  line-height: 1;
+}
+
+.deckCardTime {
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.deckCardBottom {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+}
+
+.deckCardName {
+  font-family: 'Nunito', var(--font-heading, system-ui, sans-serif);
+  font-weight: 800;
+  font-size: 17px;
+  line-height: 1.25;
+}
+
+.deckCardBadge {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.emptyDeck {
+  background: #ffffff;
+  border: 2px dashed var(--border);
+  border-radius: 24px;
+  padding: 40px 20px;
+  text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+}
+
+.emptyEmoji {
+  font-size: 48px;
+}
+
+.emptyDeck h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.emptyDeck p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  max-width: 320px;
+}
+
+.emptySnapBtn {
+  margin-top: 8px;
+}
+
+/* ---- Sticky Bottom Navigation Bar ---- */
+.bottomNav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-around;
+  padding: 8px 16px 12px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.navTab {
+  appearance: none;
+  border: 0;
+  background: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 4px 16px;
+  border-radius: 12px;
+  transition: all 0.15s ease;
+}
+
+.navTab:hover {
+  color: var(--text);
+}
+
+.navTabActive {
+  color: #0f766e; /* teal active from Page 1 bottom nav */
+}
+
+.navIcon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.navLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.navBadge {
+  background: #ea580c;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 999px;
+  line-height: 1.2;
+}
+
+/* =========================================================
+   PAGE 6 VIEWFINDER & PAGE 7 ANALYZING STYLES
+   ========================================================= */
+
+.cameraWrap {
+  background: #18181b;
+  border-radius: 28px;
+  padding: 16px 14px 20px;
+  display: grid;
+  gap: 14px;
+  color: #ffffff;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+}
+
+.cameraTopBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+
+.cameraCloseBtn {
+  appearance: none;
+  border: 0;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.cameraCloseBtn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.cameraTargetPill {
+  background: rgba(255, 255, 255, 0.95);
+  color: #18181b;
+  font-family: 'Nunito', var(--font-heading, system-ui, sans-serif);
+  font-weight: 800;
+  font-size: 14px;
+  padding: 6px 16px;
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.cameraViewfinder {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  max-height: 56vh;
+  background: #27272a;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.cameraViewfinder video,
+.cameraViewfinder img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Reticle brackets (Page 6) */
+.cameraReticle {
+  position: absolute;
+  inset: 15%;
+  pointer-events: none;
+}
+
+.reticleTL,
+.reticleTR,
+.reticleBL,
+.reticleBR {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border-color: #ffffff;
+  border-style: solid;
+  border-width: 0;
+}
+
+.reticleTL {
+  top: 0;
+  left: 0;
+  border-top-width: 3.5px;
+  border-left-width: 3.5px;
+  border-top-left-radius: 12px;
+}
+
+.reticleTR {
+  top: 0;
+  right: 0;
+  border-top-width: 3.5px;
+  border-right-width: 3.5px;
+  border-top-right-radius: 12px;
+}
+
+.reticleBL {
+  bottom: 0;
+  left: 0;
+  border-bottom-width: 3.5px;
+  border-left-width: 3.5px;
+  border-bottom-left-radius: 12px;
+}
+
+.reticleBR {
+  bottom: 0;
+  right: 0;
+  border-bottom-width: 3.5px;
+  border-right-width: 3.5px;
+  border-bottom-right-radius: 12px;
+}
+
+.cameraCenterPill {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.cameraControls {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.cameraSubBtn {
+  appearance: none;
+  border: 0;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  border-radius: 12px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.cameraSubBtn:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.shutterBtnLarge {
+  appearance: none;
+  cursor: pointer;
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  border: 4px solid #ffffff;
+  background: transparent;
+  padding: 4px;
+  display: grid;
+  place-items: center;
+  transition: transform 0.15s;
+}
+
+.shutterBtnLarge:active {
+  transform: scale(0.92);
+}
+
+.shutterInnerRing {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #ea580c; /* vibrant orange from Page 6 */
+  display: block;
+  box-shadow: 0 0 14px rgba(234, 88, 12, 0.6);
+}
+
+.cameraPrivacyNote {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+/* ---- Analyzing Screen (Page 7) ---- */
+.analyzingThumb {
+  width: 140px;
+  height: 140px;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  margin-bottom: 8px;
+}
+
+.analyzingThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.analyzingText {
+  display: grid;
+  gap: 4px;
+  text-align: center;
+}
+
+.analyzingTitle {
+  font-family: 'Nunito', var(--font-heading, system-ui, sans-serif);
+  font-size: 26px;
+  font-weight: 800;
+  margin: 0;
+  color: var(--text);
+}
+
+.analyzingSub {
+  font-size: 15px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.checklistCard {
+  background: #ffffff;
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  padding: 18px 20px;
+  width: 100%;
+  max-width: 320px;
+  display: grid;
+  gap: 14px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+  text-align: left;
+}
+
+.checkItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.checkDone .checkBadge {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #0f766e;
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.checkActive .checkSpin {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 3px solid #f97316;
+  border-top-color: transparent;
+  animation: spin 0.8s linear infinite;
+}
+
+.checkPending .checkCircle {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid #d1cfc7;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---- Quick Quiz Choice Buttons (Page 2) ---- */
+.quizChoices {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.quizChoiceBtn {
+  appearance: none;
+  border: 1.5px solid var(--border);
+  background: #ffffff;
+  color: var(--text);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 15px;
+  border-radius: 14px;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 0 0 var(--border);
+}
+
+.quizChoiceBtn:hover {
+  background: var(--surface);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+.quizChoiceBtn:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+.quizChoiceCorrect {
+  border-color: #0f766e !important;
+  background: #f0fdf4 !important;
+  color: #0f766e !important;
+  box-shadow: 0 2px 0 0 #0f766e !important;
+}
+
+.quizChoiceTick {
+  font-weight: 800;
+  font-size: 16px;
+  color: #0f766e;
+}

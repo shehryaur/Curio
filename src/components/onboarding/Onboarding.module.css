@@ -37,7 +37,7 @@
 
 .avatar {
   flex: none;
-  border: 1px solid var(--pip, #ce82ff);
+  border: 1px solid var(--border, #E6E4DD);
   width: 32px;
   height: 32px;
   border-radius: 999px;
@@ -60,7 +60,7 @@
 .bubblePip {
   background: var(--bg-alt);
   color: var(--text);
-  border-color: var(--pip, #ce82ff);
+  border-color: var(--border, #E6E4DD);
   border-bottom-left-radius: 4px;
 }
 .bubbleMe {
@@ -256,7 +256,7 @@
   gap: 8px;
   padding: 8px 16px;
   background: var(--bg-alt);
-  border-bottom: 1px solid var(--pip, #ce82ff);
+  border-bottom: 1px solid var(--border, #E6E4DD);
   color: var(--text);
   font-size: 15px;
   font-weight: 600;

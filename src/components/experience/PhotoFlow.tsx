@@ -142,16 +142,28 @@ export default function PhotoFlow({ profile, mode, onLesson, onCancel }: Props) 
       return (
         <div className={`${s.panel} ${s.center}`}>
           {photo && (
-            <div className={s.camera} style={{ maxHeight: '40vh' }}>
+            <div className={s.analyzingThumb}>
               <img src={photo} alt="Your photo" />
             </div>
           )}
-          <Pet mood="thinking" size="md" message="Pip is looking closely…" />
-          <span className={s.waitDots} aria-hidden>
-            <i />
-            <i />
-            <i />
-          </span>
+          <div className={s.analyzingText}>
+            <h2 className={s.analyzingTitle}>Curio is looking…</h2>
+            <p className={s.analyzingSub}>Hmm, what could this be?</p>
+          </div>
+          <div className={s.checklistCard}>
+            <div className={`${s.checkItem} ${s.checkDone}`}>
+              <span className={s.checkBadge}>✓</span>
+              <span>Spotted an object!</span>
+            </div>
+            <div className={`${s.checkItem} ${s.checkActive}`}>
+              <span className={s.checkSpin} />
+              <span>Writing your story</span>
+            </div>
+            <div className={`${s.checkItem} ${s.checkPending}`}>
+              <span className={s.checkCircle} />
+              <span>Making your quiz</span>
+            </div>
+          </div>
         </div>
       )
     case 'error':

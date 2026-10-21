@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react'
 import { useKidAgeGate } from '@k-id/core'
 import Pet from '@/components/Pet'
 import { ProfileProvider } from '@/components/ProfileProvider'
+import { AdultVerifyGate } from './AdultVerifyGate'
 import { kidStorage } from '@/lib/kidStorage'
 import { clearProfile, loadProfile, saveProfile } from '@/lib/profile'
 import type { Profile } from '@/lib/types'
@@ -46,7 +47,12 @@ export function Gate({ children }: { children: ReactNode }) {
       (gate.status === 'pass' && !!gate.sessionId) ||
       gate.status === 'pending' ||
       (gate.status === 'error' && !resumingSession)
-    if (inApp) return <ProfileProvider profile={profile}>{children}</ProfileProvider>
+    if (inApp)
+      return (
+        <ProfileProvider profile={profile}>
+          <AdultVerifyGate profile={profile}>{children}</AdultVerifyGate>
+        </ProfileProvider>
+      )
 
     if (gate.status === 'running' || gate.status === 'pass') return <PipLoading text={`Welcome back, ${profile.name}!`} />
 

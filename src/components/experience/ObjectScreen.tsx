@@ -7,7 +7,7 @@ import ViewerLoading from '@/components/three/ViewerLoading'
 import { useSpeaker } from '@/hooks/useSpeaker'
 import type { MeshyModelState } from '@/hooks/useMeshyModel'
 import type { Activity, AgeMode, ObjectLesson, PetMood, Profile } from '@/lib/types'
-import AskPip from './AskPip'
+import PetCloud from './PetCloud'
 import ExplorePanel from './ExplorePanel'
 import LearnPanel from './LearnPanel'
 import QuizPanel from './QuizPanel'
@@ -95,7 +95,8 @@ export default function ObjectScreen({ lesson, mode, profile, photoUrl, meshy, s
         </h1>
       </div>
 
-      <div className={s.viewer}>
+      <div className={s.viewer} style={{ position: 'sticky', top: 0, zIndex: 4 }}>
+        <div id="viewer-overlay" style={{ position: 'absolute', top: 10, right: 10, zIndex: 6 }} />
         <ObjectViewer
           lesson={lesson}
           mode={mode}
@@ -125,10 +126,6 @@ export default function ObjectScreen({ lesson, mode, profile, photoUrl, meshy, s
         </p>
       )}
       {meshy.phase === 'failed' && meshy.note && <p className={s.note}>{meshy.note}</p>}
-
-      <div className={s.pipRow}>
-        <Pet mood={shownMood} message={pipState.message} size="md" />
-      </div>
 
       <div className={s.tabs} role="tablist">
         {TABS.map((t) => (
@@ -161,7 +158,19 @@ export default function ObjectScreen({ lesson, mode, profile, photoUrl, meshy, s
         />
       )}
 
-      <AskPip lesson={lesson} mode={mode} profile={profile} speaker={speaker} pip={pip} onFrustrated={frustrated} />
+      <div className={s.pipRow}>
+        <PetCloud
+          lesson={lesson}
+          mode={mode}
+          profile={profile}
+          initialMessage={pipState.message}
+          mood={shownMood}
+          onFrustrated={frustrated}
+          onFocusPart={(id) => setFocusOverride(id)}
+          size="md"
+        />
+      </div>
+
       {speaker.note && <p className={s.note}>🔇 {speaker.note}</p>}
     </>
   )

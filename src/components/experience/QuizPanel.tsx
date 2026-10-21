@@ -23,6 +23,7 @@ export default function QuizPanel({ lesson, mode, speaker, pip, setHighlight, pa
   const [score, setScore] = useState(0)
   const [finished, setFinished] = useState(false)
   const [round, setRound] = useState(0)
+  const [highlightId, setHighlightId] = useState<string | null>(null)
   /** Teen: science explanation shown after a correct answer, with a Next button. */
   const [science, setScience] = useState<string | null>(null)
   const st = useRef({ qi: 0, misses: 0, score: 0, busy: false, gen: 0 })
@@ -34,6 +35,7 @@ export default function QuizPanel({ lesson, mode, speaker, pip, setHighlight, pa
       const q = questions[i]
       if (!q) return
       setHighlight(null)
+      setHighlightId(null)
       pip('talking', q.prompt[modeRef.current])
       void speaker.say(q.prompt[modeRef.current], modeRef.current)
     },
@@ -57,6 +59,7 @@ export default function QuizPanel({ lesson, mode, speaker, pip, setHighlight, pa
           setScore(S.score)
         }
         setHighlight(q.answerPartId)
+        setHighlightId(q.answerPartId)
         pip('happy', q.praise[m])
         if (m === 'teen') {
           setScience(q.praise[m])
@@ -74,7 +77,10 @@ export default function QuizPanel({ lesson, mode, speaker, pip, setHighlight, pa
           ? `That's okay. Let's look again together. ${q.hint[m]}`
           : `That’s the ${partName(lesson, partId, m)}. ${q.hint[m]}`
       pip(m === 'plainWords' ? 'talking' : 'oops', msg)
-      if (S.misses >= (m === 'plainWords' ? 1 : 2)) setHighlight(q.answerPartId)
+      if (S.misses >= (m === 'plainWords' ? 1 : 2)) {
+        setHighlight(q.answerPartId)
+        setHighlightId(q.answerPartId)
+      }
       void speaker.say(msg, m)
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -91,6 +97,7 @@ export default function QuizPanel({ lesson, mode, speaker, pip, setHighlight, pa
       setFinished(true)
       recordStreakDay()
       setHighlight(null)
+      setHighlightId(null)
       const line = END[m](S.score, questions.length)
       pip('happy', line)
       void speaker.say(line, m)
@@ -183,6 +190,25 @@ export default function QuizPanel({ lesson, mode, speaker, pip, setHighlight, pa
       {mode === 'teen' && <span className={`c-badge info ${s.selfStart}`}>🛠 Troubleshoot</span>}
       {mode === 'adult' && <span className={`c-badge ${s.selfStart}`}>Operational check</span>}
       <p className={mode === 'plainWords' ? s.plainText : s.prompt}>{q.prompt[mode]}</p>
+
+      {/* Choice Buttons (Page 2 of PDF) */}
+      <div className={s.quizChoices}>
+        {lesson.parts.slice(0, 4).map((p) => {
+          const isTarget = p.id === q.answerPartId
+          const isHighlighted = highlightId === p.id
+          return (
+            <button
+              key={p.id}
+              className={`${s.quizChoiceBtn} ${isHighlighted && isTarget ? s.quizChoiceCorrect : ''}`}
+              onClick={() => click(p.id)}
+            >
+              <span>{partName(lesson, p.id, mode)}</span>
+              {isHighlighted && isTarget && <span className={s.quizChoiceTick}>✓</span>}
+            </button>
+          )
+        })}
+      </div>
+
       <p className={s.hint}>
         {mode === 'child'
           ? '👆 Tap the part on the model!'

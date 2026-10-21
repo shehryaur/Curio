@@ -4,7 +4,7 @@
 import type { PetProps } from '@/lib/types'
 import styles from './Pet.module.css'
 
-const INK = '#37352f'
+const INK = '#1d1b29'
 
 function Sparkle({ x, y, s = 1 }: { x: number; y: number; s?: number }) {
   return (
@@ -31,60 +31,52 @@ export default function Pet({ mood, message, size = 'md' }: PetProps) {
         role="img"
         aria-label={`Pip is ${mood === 'oops' ? 'saying oops' : mood}`}
       >
-        <ellipse cx="60" cy="112" rx="30" ry="4" fill="#37352f" opacity="0.08" />
+        {/* Pip the cardinal — flat, matches the Curio brand art */}
         <g className={styles.char}>
-          {/* leaf ears */}
+          {/* perch */}
+          <path d="M14 104 L 104 96" stroke={INK} strokeWidth="4" strokeLinecap="round" />
+          {/* legs */}
+          <path d="M55 88 L 53 101 M 64 88 L 63 100" stroke={INK} strokeWidth="2.6" strokeLinecap="round" />
+          {/* tail */}
           <g className={styles.leafL}>
-            <path d="M57 31 C 46 12, 27 12, 22 19 C 29 31, 45 35, 57 31 Z" fill="#3d8a00" />
-            <path d="M55 30 C 45 22, 34 19, 26 19" stroke="#8ee04a" strokeWidth="2" fill="none" strokeLinecap="round" />
-          </g>
-          <g className={styles.leafR}>
-            <path d="M63 31 C 74 12, 93 12, 98 19 C 91 31, 75 35, 63 31 Z" fill="#3d8a00" />
-            <path d="M65 30 C 75 22, 86 19, 94 19" stroke="#8ee04a" strokeWidth="2" fill="none" strokeLinecap="round" />
+            <path d="M42 74 L 12 103 L 46 90 Z" fill="#a31a26" />
           </g>
           {/* body */}
-          <path
-            d="M60 28 C 88 28 103 48 103 72 C 103 96 85 108 60 108 C 35 108 17 96 17 72 C 17 48 32 28 60 28 Z"
-            fill="#58cc02"
-          />
-          <ellipse cx="60" cy="88" rx="25" ry="15" fill="#7fd93a" />
-          {/* cheeks */}
-          <ellipse cx="33" cy="80" rx="6.5" ry="4" fill="#ff9aa2" opacity="0.6" />
-          <ellipse cx="87" cy="80" rx="6.5" ry="4" fill="#ff9aa2" opacity="0.6" />
-          {/* eyes */}
+          <circle cx="60" cy="66" r="27" fill="#d7263d" />
+          {/* crest */}
+          <g className={styles.leafR}>
+            <path d="M56 42 L 50 14 L 74 40 Z" fill="#d7263d" />
+          </g>
+          {/* wing */}
+          <path d="M40 72 C 46 56, 66 54, 74 60 C 66 74, 52 80, 40 72 Z" fill="#a31a26" />
+          {/* mask */}
+          <path d="M70 50 C 80 46, 88 52, 88 60 C 86 66, 78 68, 72 64 C 68 60, 67 54, 70 50 Z" fill={INK} />
+          {/* eye */}
           {happy ? (
-            <g>
-              <path d="M34 68 Q 44 56 54 68" stroke={INK} strokeWidth="4.5" fill="none" strokeLinecap="round" />
-              <path d="M66 68 Q 76 56 86 68" stroke={INK} strokeWidth="4.5" fill="none" strokeLinecap="round" />
-              <Sparkle x={24} y={52} s={0.9} />
-              <Sparkle x={97} y={50} s={1.1} />
-              <Sparkle x={90} y={36} s={0.6} />
-            </g>
+            <path d="M74 56 Q 77 52 80 56" stroke="#fff" strokeWidth="2.4" fill="none" strokeLinecap="round" />
           ) : (
             <g className={styles.eyes}>
-              <ellipse cx="44" cy="66" rx="11" ry="12" fill="#fff" />
-              <ellipse cx="76" cy="66" rx="11" ry="12" fill="#fff" />
               <g className={styles.pupils}>
-                <circle cx="45" cy="68" r="6.2" fill={INK} />
-                <circle cx="77" cy="68" r="6.2" fill={INK} />
-                <circle cx="47.2" cy="65.4" r="2" fill="#fff" />
-                <circle cx="79.2" cy="65.4" r="2" fill="#fff" />
+                <circle cx="77" cy="55" r="2.6" fill="#fff" />
               </g>
             </g>
           )}
-          {/* mouth */}
+          {/* beak (opens when talking) */}
           {talking ? (
-            <ellipse className={styles.mouthTalk} cx="60" cy="86" rx="6" ry="4.5" fill={INK} />
-          ) : oops ? (
-            <circle cx="60" cy="87" r="3.6" fill={INK} />
-          ) : happy ? (
-            <path d="M51 82 Q 60 94 69 82 Z" fill={INK} />
-          ) : thinking ? (
-            <path d="M55 86 L 66 85" stroke={INK} strokeWidth="3.2" strokeLinecap="round" />
+            <g className={styles.mouthTalk}>
+              <path d="M86 54 L 100 57 L 86 59 Z" fill="#f29a2e" />
+              <path d="M86 60 L 97 62 L 86 64 Z" fill="#d97f1c" />
+            </g>
           ) : (
-            <path d="M54 84 Q 60 90 66 84" stroke={INK} strokeWidth="3.2" fill="none" strokeLinecap="round" />
+            <path d={oops ? 'M86 56 L 96 62 L 86 62 Z' : 'M86 54 L 101 59 L 86 63 Z'} fill="#f29a2e" />
           )}
-          {oops && <path className={styles.drop} d="M96 44 C 92 50 92 54 96 55 C 100 54 100 50 96 44 Z" fill="#8fd7f2" />}
+          {happy && (
+            <g>
+              <Sparkle x={22} y={40} s={0.9} />
+              <Sparkle x={100} y={34} s={1} />
+            </g>
+          )}
+          {oops && <path className={styles.drop} d="M100 36 C 96 42 96 46 100 47 C 104 46 104 42 100 36 Z" fill="#8fd7f2" />}
         </g>
         {thinking && (
           <g className={styles.dots}>

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { KidRoot } from '@/components/KidRoot'
 import './globals.css'
+import './brand.css'
 
 export const metadata: Metadata = {
   title: 'Curio',
@@ -12,7 +13,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         {/* k-ID wraps the whole app once: age gate + consent, then the app on pass */}
-        <KidRoot>{children}</KidRoot>
+        <div className="phone-frame">
+          <div className="phone-scroll">
+            <KidRoot>{children}</KidRoot>
+          </div>
+        </div>
       </body>
     </html>
   )
