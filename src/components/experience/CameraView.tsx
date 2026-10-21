@@ -140,22 +140,62 @@ export default function CameraView({ onCapture, onCancel }: Props) {
   }
 
   return (
-    <div className={s.panel}>
-      <div className={s.camera}>
-        <video ref={videoRef} playsInline muted autoPlay />
-        {status === 'starting' && <div className={s.viewerLoading} style={{ color: '#fff' }}>Opening the camera…</div>}
-      </div>
-      <p className={s.hint}>Put the object in the middle, then tap the button.</p>
-      {filePicker}
-      <div className={s.shutterRow}>
-        <button className="c-btn secondary sm" onClick={onCancel}>
-          Cancel
+    <div className={s.cameraWrap}>
+      {/* Top Floating Bar (Page 6) */}
+      <div className={s.cameraTopBar}>
+        <button className={s.cameraCloseBtn} onClick={onCancel} aria-label="Cancel">
+          ✕
         </button>
-        <button className={s.shutter} onClick={snap} disabled={status !== 'live'} aria-label="Take photo" />
-        <button className="c-btn secondary sm" onClick={() => fileRef.current?.click()}>
+        <span className={s.cameraTargetPill}>Point at something!</span>
+        <div style={{ width: 36 }} />
+      </div>
+
+      <div className={s.cameraViewfinder}>
+        <video ref={videoRef} playsInline muted autoPlay />
+        {status === 'starting' && (
+          <div className={s.viewerLoading} style={{ color: '#fff' }}>
+            Opening the camera…
+          </div>
+        )}
+
+        {/* Reticle Brackets (Page 6) */}
+        <div className={s.cameraReticle} aria-hidden>
+          <span className={s.reticleTL} />
+          <span className={s.reticleTR} />
+          <span className={s.reticleBL} />
+          <span className={s.reticleBR} />
+        </div>
+
+        {/* Center Target Pill */}
+        <div className={s.cameraCenterPill}>
+          <span>Ready to scan!</span>
+        </div>
+      </div>
+
+      {filePicker}
+
+      {/* Controls Row (Page 6) */}
+      <div className={s.cameraControls}>
+        <button className={s.cameraSubBtn} onClick={() => fileRef.current?.click()}>
           🖼️ Photo
         </button>
+        <button
+          className={s.shutterBtnLarge}
+          onClick={snap}
+          disabled={status !== 'live'}
+          aria-label="Take photo"
+        >
+          <span className={s.shutterInnerRing} />
+        </button>
+        <button className={s.cameraSubBtn} onClick={onCancel}>
+          Cancel
+        </button>
       </div>
+
+      {/* Privacy Footnote (Page 6) */}
+      <p className={s.cameraPrivacyNote}>
+        Your picture is only used to explain it. It&apos;s never saved.
+      </p>
     </div>
   )
 }

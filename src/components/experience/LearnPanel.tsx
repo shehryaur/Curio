@@ -1,4 +1,5 @@
 'use client'
+import { createPortal } from 'react-dom'
 // Learn: Pip walks through the intro and every part in order (camera focuses each part).
 // child: karaoke subtitles · teen: cause-and-effect stepper + X-ray · adult: sources + export ·
 // plainWords: one part at a time with giant Repeat / Next step buttons.
@@ -232,27 +233,29 @@ export default function LearnPanel(props: Props) {
           <b>⚠️ Safety tip:</b> {tip}
         </div>
       )}
-      <div className={s.controls}>
-        <button className="c-btn secondary" onClick={() => go(idx - 1)} disabled={idx === 0} aria-label="Previous">
+      <FloatingControls>
+      <div style={{ display: 'flex', gap: 6, background: 'rgba(255,255,255,0.92)', borderRadius: 999, padding: 4, boxShadow: '0 4px 14px rgba(29,27,41,0.18)' }}>
+        <button className="c-btn secondary sm" onClick={() => go(idx - 1)} disabled={idx === 0} aria-label="Previous">
           ◀
         </button>
         {playing ? (
-          <button className="c-btn" onClick={pause}>
+          <button className="c-btn sm" onClick={pause}>
             ❚❚ Pause
           </button>
         ) : (
-          <button className="c-btn" onClick={() => void playFrom(idx)}>
+          <button className="c-btn sm" onClick={() => void playFrom(idx)}>
             ▶ {idx === 0 && mode === 'child' ? 'Start!' : 'Play'}
           </button>
         )}
         <button
-          className="c-btn secondary"
+          className="c-btn secondary sm"
           onClick={() => (last ? finish() : go(idx + 1))}
           aria-label={last ? 'Finish' : 'Next'}
         >
           {last ? '✓' : '▶'}
         </button>
       </div>
+      </FloatingControls>
       {mode === 'teen' && (
         <label className={s.toggle}>
           <input type="checkbox" checked={xray} onChange={(e) => setXray(e.target.checked)} />
@@ -263,4 +266,11 @@ export default function LearnPanel(props: Props) {
       {mode === 'adult' && <div className={s.adultExtras}>{extras}</div>}
     </div>
   )
+}
+
+/** Renders the Learn controls on the 3D viewer's top-right corner (slot in ObjectScreen); inline fallback. */
+function FloatingControls({ children }: { children: React.ReactNode }) {
+  const [slot, setSlot] = useState<HTMLElement | null>(null)
+  useEffect(() => setSlot(document.getElementById('viewer-overlay')), [])
+  return slot ? createPortal(children, slot) : <>{children}</>
 }

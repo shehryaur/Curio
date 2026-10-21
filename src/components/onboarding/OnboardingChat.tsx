@@ -27,12 +27,12 @@ type Stage =
   | 'error'
 
 const COUNTRY_CHIPS = [
-  { code: 'US', label: '🇺🇸 United States' },
-  { code: 'GB', label: '🇬🇧 United Kingdom' },
-  { code: 'KR', label: '🇰🇷 South Korea' },
-  { code: 'IN', label: '🇮🇳 India' },
-  { code: 'PK', label: '🇵🇰 Pakistan' },
-  { code: 'DE', label: '🇩🇪 Germany' },
+  { code: 'US', label: 'United States' },
+  { code: 'GB', label: 'United Kingdom' },
+  { code: 'KR', label: 'South Korea' },
+  { code: 'IN', label: 'India' },
+  { code: 'PK', label: 'Pakistan' },
+  { code: 'DE', label: 'Germany' },
 ] as const
 
 /** Last-resort US state when k-ID can't work with plain 'US' and the player skipped the state question. */
@@ -41,14 +41,14 @@ const US_FALLBACK = 'US-CA'
 type Msg = { id: number; from: 'pip' | 'me'; text: string }
 
 export const INTERESTS = [
-  { id: 'Space', emoji: '🚀' },
-  { id: 'Art', emoji: '🎨' },
-  { id: 'Sports', emoji: '⚽' },
-  { id: 'Animals', emoji: '🦖' },
-  { id: 'Building', emoji: '🔧' },
-  { id: 'Music', emoji: '🎵' },
-  { id: 'Cooking', emoji: '🍳' },
-  { id: 'Games', emoji: '🎮' },
+  { id: 'Space', emoji: '' },
+  { id: 'Art', emoji: '' },
+  { id: 'Sports', emoji: '' },
+  { id: 'Animals', emoji: '' },
+  { id: 'Building', emoji: '' },
+  { id: 'Music', emoji: '' },
+  { id: 'Cooking', emoji: '' },
+  { id: 'Games', emoji: '' },
 ] as const
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
@@ -110,12 +110,12 @@ export function OnboardingChat({
   const nextId = useRef(1)
   const initial = useMemo<{ stage: Stage; msgs: Msg[] }>(() => {
     if (draft.name && draft.age !== undefined && draft.interests?.length && ob.age) {
-      return { stage: 'checking', msgs: [{ id: 0, from: 'pip', text: `Let's try again, ${draft.name}! 💪` }] }
+      return { stage: 'checking', msgs: [{ id: 0, from: 'pip', text: `Let's try again, ${draft.name}!` }] }
     }
     if (draft.name && draft.age !== undefined && draft.jurisdiction) {
       return { stage: 'locate', msgs: [{ id: 0, from: 'pip', text: `One more try, ${draft.name}…` }] }
     }
-    return { stage: 'name', msgs: [{ id: 0, from: 'pip', text: "Hi! I'm Pip 🌱 What's your name?" }] }
+    return { stage: 'name', msgs: [{ id: 0, from: 'pip', text: "Hi! I'm Pip. What's your name?" }] }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -178,7 +178,7 @@ export function OnboardingChat({
     if (stage !== 'locate') return
     if (ob.jurisdiction === 'auto' && jurisdictionNeeded && autoTried.current) {
       setStage('countryList')
-      say("Hmm, I couldn't tell where you are. Can you find your country? 🔎")
+      say("Hmm, I couldn't tell where you are. Can you find your country?")
       return
     }
     const req = gate.requirements
@@ -186,7 +186,7 @@ export function OnboardingChat({
     const methods = req.approvedAgeCollectionMethods
     if (!methods.includes('age-slider') && methods.includes('date-of-birth')) {
       setStage('birthday')
-      say('One more thing! Where you live, I need your birthday 🎂')
+      say('One more thing! Where you live, I need your birthday')
       return
     }
     ob.setAge({ age: draft.age })
@@ -199,13 +199,13 @@ export function OnboardingChat({
     if (stage !== 'checking' && stage !== 'email' && stage !== 'sending') return
     if (gate.status === 'pass') {
       setStage('done')
-      say(`All set, ${name}! Let's explore 🎉`, 'happy')
+      say(`All set, ${name}! Let's explore`, 'happy')
       return
     }
     if (gate.status === 'prohibited') {
       setStage('prohibited')
       say(
-        "Aww, Curio isn't open for kids your age where you live yet. Ask a grown-up to help you find other fun ways to learn! 💚",
+        "Aww, Curio isn't open for kids your age where you live yet. Ask a grown-up to help you find other fun ways to learn!",
         'oops',
       )
       return
@@ -244,8 +244,8 @@ export function OnboardingChat({
         setStage('sent')
         say(
           gate.challengeKind === 'ageAssurance'
-            ? 'I sent you a link ✉️ Open it any time. Let’s explore the starter objects!'
-            : 'I sent a note to your grown-up ✉️ Let’s explore the starter objects while we wait!',
+            ? 'I sent you a link Open it any time. Let’s explore the starter objects!'
+            : 'I sent a note to your grown-up Let’s explore the starter objects while we wait!',
           'happy',
         )
       } else {
@@ -284,7 +284,7 @@ export function OnboardingChat({
   function submitName(e: FormEvent) {
     e.preventDefault()
     const n = text.trim().replace(/\s+/g, ' ')
-    if (!n) return oops('Type your name, or a nickname! 🙂')
+    if (!n) return oops('Type your name, or a nickname!')
     if (n.length > 24) return oops("That's a long one! Just your first name is perfect.")
     if (/[@\d]/.test(n)) return oops('Just your first name is perfect — no numbers or emails!')
     reply(n)
@@ -297,7 +297,7 @@ export function OnboardingChat({
   function submitAge(e: FormEvent) {
     e.preventDefault()
     const n = Number(text.trim())
-    if (!/^\d{1,3}$/.test(text.trim()) || n < 3 || n > 120) return oops('Type a number from 3 to 120 🙂')
+    if (!/^\d{1,3}$/.test(text.trim()) || n < 3 || n > 120) return oops('Type a number from 3 to 120')
     reply(String(n))
     ob.updateDraft({ age: n })
     setText('')
@@ -310,13 +310,13 @@ export function OnboardingChat({
     setQuery('')
     if (code === 'US') {
       setStage('state')
-      say('Cool! Which state? 🗺️')
+      say('Cool! Which state?')
       return
     }
     ob.setJurisdiction(code)
     ob.updateDraft({ jurisdiction: code })
     setStage('locate')
-    say(code === 'auto' ? "No problem, I'll figure it out! 🌍" : 'Thanks! 🌍', 'happy')
+    say(code === 'auto' ? "No problem, I'll figure it out!" : 'Thanks!', 'happy')
   }
 
   function chooseState(code: string, label: string) {
@@ -325,13 +325,13 @@ export function OnboardingChat({
     ob.setJurisdiction(code)
     ob.updateDraft({ jurisdiction: code })
     setStage('locate')
-    say('Thanks! 🌍', 'happy')
+    say('Thanks!', 'happy')
   }
 
   function submitBirthday(e: FormEvent) {
     e.preventDefault()
     const age = ageFromDob(dob)
-    if (age === null) return oops('Pick your birthday on the calendar 📅')
+    if (age === null) return oops('Pick your birthday on the calendar')
     if (age < 3 || age > 120) return oops('Hmm, that birthday looks off. Try again?')
     reply(new Date(`${dob}T12:00:00`).toLocaleDateString(undefined, { dateStyle: 'long' }))
     ob.updateDraft({ age, dateOfBirth: dob })
@@ -346,7 +346,7 @@ export function OnboardingChat({
   }
 
   function submitInterests() {
-    if (picked.length === 0) return oops('Tap at least one! 👆')
+    if (picked.length === 0) return oops('Tap at least one!')
     const labels = INTERESTS.filter((i) => picked.includes(i.id)).map((i) => `${i.emoji} ${i.id}`)
     reply(labels.join('  '))
     ob.updateDraft({ interests: picked })
@@ -433,7 +433,7 @@ export function OnboardingChat({
           <div key={m.id} className={m.from === 'pip' ? styles.rowPip : styles.rowMe}>
             {m.from === 'pip' && (
               <span className={styles.avatar} aria-hidden="true">
-                🌱
+                <PipMini />
               </span>
             )}
             <div className={m.from === 'pip' ? styles.bubblePip : styles.bubbleMe}>{m.text}</div>
@@ -442,7 +442,7 @@ export function OnboardingChat({
         {thinking && (
           <div className={styles.rowPip}>
             <span className={styles.avatar} aria-hidden="true">
-              🌱
+              <PipMini />
             </span>
             <div className={`${styles.bubblePip} ${styles.typing}`} aria-label="Pip is thinking">
               <span />
@@ -503,15 +503,15 @@ export function OnboardingChat({
               type="button"
               className={styles.chip}
               onClick={() => {
-                reply('🌍 Somewhere else')
+                reply(' Somewhere else')
                 setStage('countryList')
-                say('Type to find your country 🔎')
+                say('Type to find your country')
               }}
             >
-              🌍 Somewhere else
+              Somewhere else
             </button>
-            <button type="button" className={styles.chip} onClick={() => chooseJurisdiction('auto', '🤷 Not sure')}>
-              🤷 Not sure
+            <button type="button" className={styles.chip} onClick={() => chooseJurisdiction('auto', 'Not sure')}>
+              Not sure
             </button>
           </div>
         )}
@@ -591,7 +591,7 @@ export function OnboardingChat({
 
         {(stage === 'done' || stage === 'sent') && (
           <button className={`c-btn block ${styles.big}`} onClick={finish}>
-            Let&apos;s explore! 🎉
+            Let&apos;s explore!
           </button>
         )}
 
@@ -616,5 +616,18 @@ export function OnboardingChat({
         )}
       </div>
     </div>
+  )
+}
+
+/** Tiny cardinal head for chat bubbles (matches Pet). */
+function PipMini() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+      <circle cx="11" cy="13" r="7" fill="#d7263d" />
+      <path d="M10 7 L 8 1 L 14 6 Z" fill="#d7263d" />
+      <path d="M13 9.5c2.5-1 4.5.5 4.5 2.5-.5 1.5-2.5 2-4 1-1-1-1.2-2.5-.5-3.5Z" fill="#1d1b29" />
+      <circle cx="14.6" cy="11" r="0.8" fill="#fff" />
+      <path d="M17.2 11 L 21 12.2 L 17.2 13.4 Z" fill="#f29a2e" />
+    </svg>
   )
 }

@@ -1,0 +1,41 @@
+/* Curio brand + phone frame. Loaded after globals.css so these tokens win.
+   Brand (from the pitch art): cream #F6F4EF, Curio green #0F6E5E, ink #1D1B29, Plus Jakarta Sans. */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --bg: #f6f4ef;
+  --bg-alt: #ffffff;
+  --text: #1d1b29;
+  --text-muted: #5f5c6b;
+  --brand: #0f6e5e;
+  --brand-deep: #0a5246;
+  --accent: #0f6e5e;
+  --accent-hover: #0c5e50;
+  --accent-deep: #0a5246;
+  --accent-soft: #e3f1ed;
+  --font: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+}
+
+html, body { background: var(--bg); font-family: var(--font); color: var(--text); }
+h1, h2, h3, h4 { font-family: var(--font); letter-spacing: -0.02em; font-weight: 800; }
+
+/* Phone frame: full-bleed on phones, a centered phone on wider screens. */
+.phone-frame { min-height: 100dvh; background: var(--bg); }
+
+@media (min-width: 560px) {
+  body { background: #e9e6df; }
+  .phone-frame {
+    width: 390px;
+    height: min(844px, calc(100dvh - 48px));
+    min-height: 0;
+    margin: 24px auto;
+    border-radius: 44px;
+    overflow: hidden;
+    box-shadow: 0 0 0 10px #1d1b29, 0 30px 80px rgba(29, 27, 41, 0.35);
+    /* contain position:fixed children (bottom nav, modals, confetti) inside the phone */
+    transform: translateZ(0);
+  }
+  /* Only the inside scrolls, so fixed bars (bottom nav) stay pinned to the phone's bottom edge. */
+  .phone-scroll { height: 100%; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+  .phone-scroll::-webkit-scrollbar { display: none; }
+}

@@ -5,11 +5,14 @@ import { KidSettings, KidSettingsProvider } from '@k-id/core'
 import { useProfile } from '@/components/ProfileProvider'
 import { kidStorage } from '@/lib/kidStorage'
 import styles from './onboarding/Onboarding.module.css'
+import VerifyAdultCard from '@/components/VerifyAdultCard'
+import KidInspector from '@/components/experience/KidInspector'
+import { privacyBadge } from '@/components/experience/tiers'
 
 // Profile + k-ID permission settings. <KidSettings/> needs a KidSettingsProvider; ProfileProvider's one is a sibling
 // (so the app never remounts), so this panel mounts its own while open — only once a k-ID session exists.
-export function SettingsPanel({ onClose }: { onClose: () => void }) {
-  const { profile, baseMode, startOver, kid } = useProfile()
+export function SettingsPanel({ onClose, onDashboard }: { onClose: () => void; onDashboard?: () => void }) {
+  const { profile, baseMode, startOver, kid, isDemo, demoPersonas, demoPersonaId, switchDemoPersona } = useProfile()
   const [settingsChallengeId] = useState(() => kidStorage.getSettingsChallengeId())
 
   return (
@@ -38,6 +41,32 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
             <span className="c-dim">No interests picked</span>
           )}
         </div>
+      </section>
+
+      {!profile.isMinor && <VerifyAdultCard />}
+
+      <section className="c-card" style={{ display: 'grid', gap: 10 }}>
+        <h3 style={{ margin: 0 }}>Privacy & k-ID</h3>
+        <span className="c-dim">{privacyBadge(kid.jurisdiction)}</span>
+        <KidInspector />
+        {onDashboard && profile.mode === 'adult' && (
+          <button className="c-btn secondary sm" onClick={onDashboard}>
+            Grown-up dashboard
+          </button>
+        )}
+        {isDemo && (
+          <label className="c-dim" style={{ display: 'grid', gap: 4 }}>
+            Switch test user (demo)
+            <select className="c-input" value={demoPersonaId ?? ''} onChange={(e) => switchDemoPersona(e.target.value || null)}>
+              <option value="">My profile</option>
+              {demoPersonas.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </section>
 
       <section className="c-card">
