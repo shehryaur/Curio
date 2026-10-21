@@ -1,16 +1,16 @@
-// Ask the owl: short, mode-adapted answer about the current object via Gemini. Owner: Shehryar
+// Ask Pip: short, mode-adapted, personalized answer about the current object via Gemini. Owner: Shehryar (backend agent)
 import { NextResponse } from 'next/server'
-import { askSchema, buildAskPrompt, generateJson, hasGeminiKey, isAgeMode } from '@/lib/gemini'
+import { buildAskPrompt, devErrorHeader, buildAskSchema, cleanInterests, cleanName, generateJson, hasGeminiKey, isAgeMode } from '@/lib/gemini'
 import type { AgeMode, AskResponse } from '@/lib/types'
 
 export const runtime = 'nodejs'
 
-const GEMINI_TIMEOUT_MS = 10_000
+const GEMINI_TIMEOUT_MS = 12_000
 const MAX_QUESTION_CHARS = 500
 const MAX_SENTENCES: Record<AgeMode, number> = { child: 2, teen: 4, adult: 4, plainWords: 1 }
 
 const FALLBACK_ANSWER: Record<AgeMode, string> = {
-  child: 'Hoot, great question! Let\'s ask a grown-up to find out together.',
+  child: 'Ooh, great question! Let\'s ask a grown-up to find out together.',
   teen: 'Great question. I can\'t reach my knowledge right now, so try asking again in a moment or check with a teacher.',
   adult: 'I can\'t reach the answer service right now. Please try again in a moment or check the manufacturer\'s documentation.',
   plainWords: 'Let\'s try that again in a moment.',
@@ -25,6 +25,20 @@ function limitSentences(text: string, n: number): string {
   return parts.slice(0, n).join('').trim()
 }
 
+/** Up to 12 parts with safe short ids/names; duplicates dropped. */
+function cleanParts(v: unknown): { id: string; name: string }[] {
+  const out: { id: string; name: string }[] = []
+  for (const p of Array.isArray(v) ? v : []) {
+    const o = p && typeof p === 'object' ? (p as Record<string, unknown>) : {}
+    const id = typeof o.id === 'string' ? o.id.trim().slice(0, 40) : ''
+    const name = typeof o.name === 'string' ? o.name.replace(/[<>"\n\r]/g, ' ').trim().slice(0, 60) : ''
+    if (!id || !/^[\w-]+$/.test(id) || out.some((x) => x.id === id)) continue
+    out.push({ id, name: name || id })
+    if (out.length >= 12) break
+  }
+  return out
+}
+
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null
   if (!body || typeof body !== 'object') return bad('body must be JSON')
@@ -33,28 +47,43 @@ export async function POST(req: Request) {
   if (!isAgeMode(mode)) return bad('mode must be child | teen | adult | plainWords')
   if (typeof question !== 'string' || !question.trim()) return bad('question is required')
   if (objectTitle !== undefined && typeof objectTitle !== 'string') return bad('objectTitle must be a string')
+  if (body.name !== undefined && typeof body.name !== 'string') return bad('name must be a string')
+  if (body.interests !== undefined && !Array.isArray(body.interests)) return bad('interests must be an array of strings')
+  if (body.parts !== undefined && !Array.isArray(body.parts)) return bad('parts must be an array of { id, name }')
+  const name = cleanName(body.name)
+  const interests = cleanInterests(body.interests)
+  const parts = cleanParts(body.parts)
 
   const q = question.trim().slice(0, MAX_QUESTION_CHARS)
   const title = (typeof objectTitle === 'string' && objectTitle.trim().slice(0, 100)) || 'this object'
-  const fallback: AskResponse = { answer: FALLBACK_ANSWER[mode], source: 'fallback' }
+  const fallback: AskResponse = { answer: FALLBACK_ANSWER[mode], source: 'fallback', focusPartId: null }
 
   if (!hasGeminiKey()) {
     console.error('[ask] GEMINI_API_KEY not set; serving fallback')
     return NextResponse.json(fallback)
   }
 
+  const t0 = Date.now()
   try {
     const raw = (await generateJson({
-      prompt: buildAskPrompt(q, title, mode),
-      schema: askSchema,
+      prompt: buildAskPrompt({ question: q, objectTitle: title, mode, name, interests, parts }),
+      schema: buildAskSchema(parts.map((p) => p.id)),
+      maxOutputTokens: 600,
       timeoutMs: GEMINI_TIMEOUT_MS,
-    })) as { answer?: unknown } | null
+    })) as { answer?: unknown; focusPartId?: unknown } | null
     const answer = typeof raw?.answer === 'string' ? raw.answer.trim() : ''
     if (!answer) throw new Error('empty answer')
-    const res: AskResponse = { answer: limitSentences(answer, MAX_SENTENCES[mode]).slice(0, 800), source: 'gemini' }
+    const focus = raw?.focusPartId
+    const focusPartId = typeof focus === 'string' && parts.some((p) => p.id === focus) ? focus : null
+    const res: AskResponse = {
+      answer: limitSentences(answer, MAX_SENTENCES[mode]).slice(0, 800),
+      source: 'gemini',
+      focusPartId,
+    }
+    console.log(`[ask] ok in ${Date.now() - t0}ms focus=${focusPartId ?? 'none'}`)
     return NextResponse.json(res)
   } catch (err) {
-    console.error('[ask] Gemini failed; serving fallback:', err instanceof Error ? err.message : String(err))
-    return NextResponse.json(fallback)
+    console.error(`[ask] Gemini failed after ${Date.now() - t0}ms; serving fallback:`, err instanceof Error ? err.message : String(err))
+    return NextResponse.json(fallback, { headers: devErrorHeader(err) })
   }
 }

@@ -1,0 +1,139 @@
+/* Pip — flat SVG pet. Sizes: sm 48 / md 88 / lg 140. */
+.wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font, 'Inter', system-ui, sans-serif);
+}
+.pet {
+  flex: 0 0 auto;
+  display: block;
+  overflow: visible;
+}
+.sm .pet { width: 48px; height: 48px; }
+.md .pet { width: 88px; height: 88px; }
+.lg .pet { width: 140px; height: 140px; }
+
+/* every animated SVG piece transforms around its own box */
+.char, .eyes, .pupils, .leafL, .leafR, .mouthTalk, .sparkle, .drop, .dots circle {
+  transform-box: fill-box;
+}
+.char { transform-origin: 50% 100%; }
+.eyes, .mouthTalk { transform-origin: 50% 50%; }
+.leafL { transform-origin: 100% 100%; }
+.leafR { transform-origin: 0% 100%; }
+
+/* idle (also base for talking): breathe + blink + leaf sway */
+.idle .char, .talking .char { animation: breathe 3.2s ease-in-out infinite; }
+.eyes { animation: blink 4.6s infinite; }
+.leafL { animation: swayL 3.2s ease-in-out infinite; }
+.leafR { animation: swayR 3.2s ease-in-out infinite; }
+
+/* talking: mouth open/close */
+.mouthTalk { animation: talk 0.32s ease-in-out infinite alternate; }
+
+/* happy: bounce + twinkling sparkles */
+.happy .char { animation: bounce 0.7s cubic-bezier(.3,.7,.4,1) infinite; }
+.sparkle { transform-origin: 50% 50%; animation: twinkle 0.9s ease-in-out infinite; }
+.sparkle:nth-of-type(4) { animation-delay: 0.3s; }
+.sparkle:nth-of-type(5) { animation-delay: 0.6s; }
+
+/* thinking: eyes look up, three dots */
+.thinking .pupils { transform: translate(3px, -5px); transition: transform .3s; }
+.thinking .char { animation: breathe 4s ease-in-out infinite; }
+.dots circle { opacity: 0.2; animation: dot 1.2s ease-in-out infinite; }
+.dots circle:nth-child(2) { animation-delay: 0.2s; }
+.dots circle:nth-child(3) { animation-delay: 0.4s; }
+
+/* oops: small wobble + sweat drop */
+.oops .char { animation: wobble 0.6s ease-in-out 2; }
+.drop { animation: drip 1.4s ease-in infinite; }
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(1.03, 0.97); }
+}
+@keyframes blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
+@keyframes swayL {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-6deg); }
+}
+@keyframes swayR {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(6deg); }
+}
+@keyframes talk {
+  from { transform: scaleY(0.25); }
+  to { transform: scaleY(1); }
+}
+@keyframes bounce {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  30% { transform: translateY(-12%) scale(0.97, 1.04); }
+  60% { transform: translateY(0) scale(1.04, 0.96); }
+}
+@keyframes twinkle {
+  0%, 100% { transform: scale(0.6) rotate(0deg); opacity: 0.6; }
+  50% { transform: scale(1.15) rotate(20deg); opacity: 1; }
+}
+@keyframes dot {
+  0%, 100% { opacity: 0.2; }
+  40% { opacity: 1; }
+}
+@keyframes wobble {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-7deg); }
+  75% { transform: rotate(7deg); }
+}
+@keyframes drip {
+  0% { transform: translateY(0); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateY(8px); opacity: 0; }
+}
+
+/* speech bubble (Notion card) — right of Pip on desktop, below on mobile */
+.bubble {
+  position: relative;
+  background: var(--bg-alt, #fbfaf8);
+  border: 1px solid var(--border, #e9e7e2);
+  border-radius: 12px;
+  padding: 10px 14px;
+  color: var(--text, #37352f);
+  font-size: 16px;
+  line-height: 1.5;
+  max-width: 360px;
+  animation: pop 0.18s ease-out;
+}
+.bubble::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  background: var(--bg-alt, #fbfaf8);
+  border-left: 1px solid var(--border, #e9e7e2);
+  border-bottom: 1px solid var(--border, #e9e7e2);
+  transform: translateY(-50%) rotate(45deg);
+}
+.sm .bubble { font-size: 14px; padding: 8px 12px; }
+@keyframes pop {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@media (max-width: 640px) {
+  .wrap { flex-direction: column; align-items: flex-start; }
+  .bubble { max-width: 100%; }
+  .bubble::before {
+    left: 24px;
+    top: -6px;
+    transform: rotate(135deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wrap *, .wrap *::before { animation: none !important; transition: none !important; }
+}

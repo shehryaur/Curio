@@ -10,6 +10,7 @@ export const KID_DECLARE: KidDeclare = {
   permissions: [
     { name: 'camera-access' }, // webcam "Snap & Explore" scanner
     { name: 'ai-media-upload' }, // the snapshot is sent to the AI to identify the object
+    { name: 'ai-media-generation' }, // a 3D model is generated from the child's photo (Meshy)
     { name: 'ai-chat' }, // ask the Curio owl questions about the object
     { name: 'ai-voice-mode' }, // talk to the owl by voice (Modulate in, Inworld out)
     { name: 'personalized-recommendations' }, // lessons adapted to the player's age and mood

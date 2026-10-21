@@ -1,0 +1,221 @@
+/* ObjectViewer / PhotoPins / ViewerLoading — Notion surfaces, Duolingo green signals. */
+.root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  background: var(--bg-alt, #fbfaf8);
+  border-radius: inherit;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.canvas {
+  position: absolute !important;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ---- floating part label (3D Html + PhotoPins) ---- */
+.label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, calc(-100% - 14px));
+  min-width: 120px;
+  max-width: 220px;
+  width: max-content;
+  background: var(--bg-alt, #fbfaf8);
+  border: 1px solid var(--border, #e9e7e2);
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-family: var(--font, 'Inter', system-ui, sans-serif);
+  color: var(--text, #37352f);
+  line-height: 1.35;
+  pointer-events: none;
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  animation: labelIn 0.14s ease-out;
+  white-space: normal;
+}
+.label strong {
+  font-weight: 700;
+  font-size: 14px;
+}
+.label span {
+  font-size: 13px;
+  color: var(--text-muted, #6f6b62);
+}
+.labelBelow {
+  transform: translate(-50%, 22px);
+}
+@keyframes labelIn {
+  from { opacity: 0; margin-top: 4px; }
+  to { opacity: 1; margin-top: 0; }
+}
+
+/* ---- loading ---- */
+.loadingCenter {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+.loadingCard {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+  background: var(--bg, #fff);
+  border: 1px solid var(--border, #e9e7e2);
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-family: var(--font, 'Inter', system-ui, sans-serif);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted, #6f6b62);
+}
+.spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-soft, #e8f8d8);
+  border-top-color: var(--accent, #58cc02);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---- GLB pin badge ---- */
+.pinBadge {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 999px;
+  background: var(--accent, #58cc02);
+  color: #fff;
+  font: 800 12px/1 var(--font, 'Inter', system-ui, sans-serif);
+  font-variant-numeric: tabular-nums;
+  border: 2px solid #fff;
+}
+
+/* ---- PhotoPins ---- */
+.photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+.emojiStage {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: clamp(96px, 30vmin, 180px);
+  line-height: 1;
+}
+.emojiStage span {
+  display: grid;
+  place-items: center;
+  width: 1.5em;
+  height: 1.5em;
+  border-radius: 50%;
+  background: var(--surface, #f1efea);
+}
+.pinLayer {
+  position: absolute;
+}
+.pinSlot {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+.pin {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  background: var(--accent, #58cc02);
+  color: #fff;
+  font: 800 14px/1 var(--font, 'Inter', system-ui, sans-serif);
+  font-variant-numeric: tabular-nums;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: 0 2px 0 0 var(--accent-deep, #3d8a00);
+  transition: transform 0.15s, background 0.15s;
+}
+.pin:focus-visible {
+  outline: 2px solid var(--xp, #1cb0f6);
+  outline-offset: 2px;
+}
+.pin[tabindex='-1'] {
+  cursor: default;
+}
+.pinHover {
+  transform: translate(-50%, -50%) scale(1.15);
+  background: var(--accent-hover, #4cad00);
+}
+.pinFocus,
+.pinHighlight {
+  animation: pinPulse 1.2s ease-in-out infinite;
+}
+.pinHighlight {
+  background: var(--accent-deep, #3d8a00);
+}
+@keyframes pinPulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1.1); box-shadow: 0 0 0 0 rgba(88, 204, 2, 0.55); }
+  50% { transform: translate(-50%, -50%) scale(1.25); box-shadow: 0 0 0 12px rgba(88, 204, 2, 0); }
+}
+
+/* keyboard-accessible part list for the 3D canvas */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .label, .spinner, .pinFocus, .pinHighlight { animation: none; }
+  .pin { transition: none; }
+}
+
+.stack {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+}
+.loadingChip {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  background: var(--bg, #fff);
+  border: 1px solid var(--border, #e9e7e2);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: 600 13px/1.2 var(--font, 'Inter', system-ui, sans-serif);
+  color: var(--text-muted, #6f6b62);
+  pointer-events: none;
+}

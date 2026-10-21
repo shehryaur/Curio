@@ -57,30 +57,53 @@ function asRecord(v: unknown): Record<string, unknown> | null {
   return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null
 }
 
-/** Create an image-to-3D task. Returns the Meshy task id. */
+/**
+ * Generation presets, fastest first (Meshy docs, Sept 2026 medians, image->3D with 2K texture):
+ *   meshy-t2 (smart topology)  ~60s, 15 credits, clean mesh with natively separated parts  <- default
+ *   meshy-6-lite (standard)    ~75s, 15 credits                                            <- fallback
+ * PBR maps are off on purpose: they add 30-60s, and our studio environment lighting already makes the
+ * base-color texture look realistic. Override the model with MESHY_AI_MODEL (e.g. "meshy-7.1" for max quality, ~2 min).
+ */
+function buildPresets(imageDataUrl: string): Record<string, unknown>[] {
+  const common = { image_url: imageDataUrl, should_texture: true, texture_resolution: '2k', target_formats: ['glb'] }
+  const override = process.env.MESHY_AI_MODEL?.trim()
+  if (override) {
+    const smart = override.startsWith('meshy-t')
+    return [
+      smart
+        ? { ...common, model_type: 'smart-topology', ai_model: override }
+        : { ...common, model_type: 'standard', ai_model: override },
+    ]
+  }
+  return [
+    { ...common, model_type: 'smart-topology', ai_model: 'meshy-t2', target_polycount: 15000 },
+    { ...common, model_type: 'standard', ai_model: 'meshy-6-lite' },
+  ]
+}
+
+/** Create an image-to-3D task. Returns the Meshy task id. Tries the fastest preset, falls back on a 400. */
 export async function createImageTo3dTask(imageDataUrl: string): Promise<string> {
   const key = apiKey()
-  const body: Record<string, unknown> = {
-    image_url: imageDataUrl,
-    should_texture: true,
-    enable_pbr: false,
-  }
-  const model = process.env.MESHY_AI_MODEL?.trim()
-  if (model) body.ai_model = model
-
-  const res = await fetchWithTimeout(API_BASE, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  const json = asRecord(await res.json().catch(() => null))
-  if (!res.ok) {
+  let lastError = 'Meshy create failed'
+  for (const body of buildPresets(imageDataUrl)) {
+    const res = await fetchWithTimeout(API_BASE, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const json = asRecord(await res.json().catch(() => null))
+    if (res.ok) {
+      const id = json?.result ?? json?.id ?? asRecord(json?.result)?.id
+      if (!isValidTaskId(id)) throw new Error('Meshy create returned no task id')
+      return id
+    }
     const msg = typeof json?.message === 'string' ? json.message : `HTTP ${res.status}`
-    throw new Error(`Meshy create failed: ${msg}`)
+    lastError = `Meshy create failed: ${msg}`
+    // Only a 400 (bad parameter combination) is worth retrying with the next preset.
+    if (res.status !== 400) break
+    console.warn('[meshy] preset rejected, trying fallback:', msg)
   }
-  const id = json?.result ?? json?.id ?? asRecord(json?.result)?.id
-  if (!isValidTaskId(id)) throw new Error('Meshy create returned no task id')
-  return id
+  throw new Error(lastError)
 }
 
 export interface MeshyTaskInfo extends MeshyStatus {

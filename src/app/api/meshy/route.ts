@@ -1,6 +1,7 @@
 // OPTIONAL stretch: wildcard object -> 3D mesh. Not a sponsor; cut first if short on time.
 // POST { imageBase64 } -> { taskId }   GET ?taskId= -> MeshyStatus   GET ?proxy=<taskId> -> GLB stream
 import type { MeshyStatus } from '@/lib/types'
+import { isolateObject } from '@/lib/isolateObject'
 import {
   MeshyUnavailableError,
   createImageTo3dTask,
@@ -31,8 +32,19 @@ export async function POST(req: Request) {
     return unavailable('', 'Invalid JSON body')
   }
   const raw = payload && typeof payload === 'object' ? (payload as { imageBase64?: unknown }).imageBase64 : undefined
-  const imageUrl = toImageDataUrl(raw)
+  let imageUrl = toImageDataUrl(raw)
   if (!imageUrl) return unavailable('', 'imageBase64 missing, invalid, or larger than 8MB')
+
+  // Isolate the primary item from the photo before creating the 3D model
+  try {
+    const isolated = await isolateObject(imageUrl)
+    if (isolated?.dataUrl) {
+      imageUrl = isolated.dataUrl
+    }
+  } catch (err) {
+    console.warn('[meshy] Object isolation fallback to raw image:', err)
+  }
+
   try {
     const taskId = await createImageTo3dTask(imageUrl)
     return Response.json({ taskId }, { status: 201 })
