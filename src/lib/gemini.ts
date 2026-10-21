@@ -9,7 +9,7 @@ export const TEMPLATE_IDS: readonly TemplateId[] = ['bottle', 'camera', 'book', 
 export const isAgeMode = (v: unknown): v is AgeMode => AGE_MODES.includes(v as AgeMode)
 export const isTemplateId = (v: unknown): v is TemplateId => TEMPLATE_IDS.includes(v as TemplateId)
 
-export const geminiModel = () => process.env.GEMINI_MODEL ?? 'gemini-2.5-flash'
+export const geminiModel = () => process.env.GEMINI_MODEL ?? 'gemini-2.5-flash-lite'
 export const hasGeminiKey = () => Boolean(process.env.GEMINI_API_KEY)
 
 let client: GoogleGenAI | null = null
@@ -62,9 +62,10 @@ export async function generateJson(opts: {
   if (opts.image) contents.push({ inlineData: opts.image })
   contents.push({ text: opts.prompt })
 
+  let currentModel = geminiModel()
   const call = () =>
     ai.models.generateContent({
-      model: geminiModel(),
+      model: currentModel,
       contents,
       config: {
         responseMimeType: 'application/json',
@@ -85,10 +86,11 @@ export async function generateJson(opts: {
         if (!text) throw new Error('Gemini returned empty text')
         return JSON.parse(text) as unknown
       } catch (err) {
-        // One quick retry for transient rate-limit / overload errors, if there is time left.
+        // One quick retry for transient rate-limit / overload errors, switching to flash-lite if needed
         const msg = err instanceof Error ? err.message : String(err)
         const transient = /\b(429|500|503)\b|RESOURCE_EXHAUSTED|UNAVAILABLE|overloaded|fetch failed/i.test(msg)
         if (attempt >= 1 || !transient || controller.signal.aborted || Date.now() - started > opts.timeoutMs / 2) throw err
+        if (currentModel !== 'gemini-2.5-flash-lite') currentModel = 'gemini-2.5-flash-lite'
         await new Promise((r) => setTimeout(r, 900))
       }
     }
