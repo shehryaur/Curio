@@ -27,6 +27,7 @@ export default function BottomNav({ active, cardsCount, isAdult, onExplore, onDe
       <button
         className={`${s.navTab} ${active === 'deck' ? s.navTabActive : ''}`}
         onClick={onDeck}
+        data-tour="mycards"
       >
         <span className={s.navIcon} aria-hidden>
           <Icon name="cards" size={22} />

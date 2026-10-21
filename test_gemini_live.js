@@ -9,7 +9,7 @@ env.split(/\r?\n/).forEach(line => {
 });
 
 async function run() {
-  const { POST } = require('./src/app/api/analyze/route.ts');
+  const { generateJson, buildAnalyzePrompt, buildAnalyzeSchema } = require('./src/lib/gemini.ts');
   const buf = await sharp({
     create: { width: 300, height: 300, channels: 3, background: { r: 240, g: 240, b: 240 } }
   }).composite([{
@@ -17,21 +17,21 @@ async function run() {
     top: 0, left: 0
   }]).jpeg().toBuffer();
 
-  const req = new Request('http://localhost:3000/api/analyze', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      imageBase64: 'data:image/jpeg;base64,' + buf.toString('base64'),
-      mode: 'child',
-      name: 'Leo'
-    })
+  const available = ['bottle', 'camera', 'book', 'phone', 'charger', 'mug', 'pencil'];
+  const prompt = buildAnalyzePrompt({ available, name: 'Leo', interests: [] });
+  const schema = buildAnalyzeSchema(available);
+
+  console.log('Testing generateJson with gemini-2.5-flash-lite...');
+  const res = await generateJson({
+    prompt,
+    schema,
+    image: { mimeType: 'image/jpeg', data: buf.toString('base64') },
+    timeoutMs: 15000,
+    maxOutputTokens: 3000
   });
 
-  const res = await POST(req);
-  const data = await res.json();
-  console.log('STATUS:', res.status);
-  console.log('MATCHED TEMPLATE:', data.matchedTemplate);
-  console.log('TITLE:', data.lesson?.title?.child);
-  console.log('SOURCE:', data.lesson?.source);
+  console.log('SUCCESS! Result:');
+  console.log('Matched Template:', res.matchedTemplate);
+  console.log('Parts count:', res.parts?.length);
 }
 run().catch(console.error);
