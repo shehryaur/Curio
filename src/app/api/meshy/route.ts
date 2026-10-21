@@ -1,5 +1,6 @@
 // OPTIONAL stretch: wildcard object -> 3D mesh. Not a sponsor; cut first if short on time.
 // POST { imageBase64 } -> { taskId }   GET ?taskId= -> MeshyStatus   GET ?proxy=<taskId> -> GLB stream
+import { NextResponse } from 'next/server'
 import type { MeshyStatus } from '@/lib/types'
 import { isolateObject } from '@/lib/isolateObject'
 import {
@@ -23,7 +24,10 @@ function unavailable(taskId: string, error: string): Response {
   return Response.json(body, { status: 200 })
 }
 
+import { DEMO_ON, DEMO_TASK_ID, demoStatus, startDemoBuild } from '@/lib/demoSodaCan'
+
 export async function POST(req: Request) {
+  if (DEMO_ON) return NextResponse.json({ taskId: startDemoBuild() }, { status: 201 })
   if (!isMeshyConfigured()) return unavailable('', 'MESHY_API_KEY not configured')
   let payload: unknown
   try {
@@ -56,6 +60,10 @@ export async function POST(req: Request) {
 
 export async function GET(req: Request) {
   const params = new URL(req.url).searchParams
+  if (DEMO_ON && (params.get('taskId') === DEMO_TASK_ID || params.get('proxy') === DEMO_TASK_ID)) {
+    if (params.get('proxy')) return NextResponse.redirect(new URL('/models/sodacan.glb', req.url))
+    return NextResponse.json(demoStatus())
+  }
   const proxyId = params.get('proxy')
 
   if (proxyId !== null) {

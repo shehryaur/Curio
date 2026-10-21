@@ -28,73 +28,84 @@ export async function isolateObject(input: string): Promise<IsolationResult> {
   if (buf.length < 100) return { dataUrl: input }
 
   const apiKey = process.env.GEMINI_API_KEY
-  if (!apiKey) {
-    return { dataUrl: input }
-  }
-
   try {
     const meta = await sharp(buf).metadata()
     const width = meta.width ?? 768
     const height = meta.height ?? 768
 
-    const ai = new GoogleGenAI({ apiKey })
-    const prompt =
-      'Identify the single primary foreground object to turn into a 3D model. Return a tight bounding box [ymin, xmin, ymax, xmax] on a 0 to 1000 scale framing only the object (exclude table, background, wall, hands).'
+    let box_2d: number[] | undefined
 
-    const res = await Promise.race([
-      ai.models.generateContent({
-        model: geminiModel(),
-        contents: [
-          { inlineData: { mimeType, data: rawBase64 } },
-          { text: prompt },
-        ],
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              box_2d: {
-                type: Type.ARRAY,
-                items: { type: Type.INTEGER },
-                description: '[ymin, xmin, ymax, xmax] 0-1000',
+    if (apiKey) {
+      try {
+        const ai = new GoogleGenAI({ apiKey })
+        const prompt =
+          'Identify the single primary foreground object to turn into a 3D model. Return a tight bounding box [ymin, xmin, ymax, xmax] on a 0 to 1000 scale framing only the object (exclude table, background, wall, hands).'
+
+        const res = await Promise.race([
+          ai.models.generateContent({
+            model: geminiModel(),
+            contents: [
+              { inlineData: { mimeType, data: rawBase64 } },
+              { text: prompt },
+            ],
+            config: {
+              responseMimeType: 'application/json',
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                  box_2d: {
+                    type: Type.ARRAY,
+                    items: { type: Type.INTEGER },
+                    description: '[ymin, xmin, ymax, xmax] 0-1000',
+                  },
+                  label: { type: Type.STRING },
+                },
+                required: ['box_2d'],
               },
-              label: { type: Type.STRING },
+              thinkingConfig: { thinkingBudget: 0 },
             },
-            required: ['box_2d'],
-          },
-          thinkingConfig: { thinkingBudget: 0 },
-        },
-      }),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
-    ])
+          }),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
+        ])
 
-    const text = res.text
-    if (!text) return { dataUrl: input }
+        const text = res.text
+        if (text) {
+          const parsed = JSON.parse(text) as { box_2d?: number[] }
+          if (parsed.box_2d && parsed.box_2d.length >= 4) {
+            box_2d = parsed.box_2d
+          }
+        }
+      } catch {
+        // Fall back to center/studio framing
+      }
+    }
+    let cropped: Buffer<ArrayBufferLike> = buf
+    let cropW = width
+    let cropH = height
+    let box: [number, number, number, number] | undefined
 
-    const parsed = JSON.parse(text) as { box_2d?: number[]; label?: string }
-    const b = parsed.box_2d
-    if (!b || b.length < 4) return { dataUrl: input }
+    if (box_2d && box_2d.length >= 4) {
+      const [ymin, xmin, ymax, xmax] = box_2d
+      if (ymax > ymin && xmax > xmin) {
+        // Convert 0..1000 to pixel coordinates with 6% safety padding
+        const padY = (ymax - ymin) * 0.06
+        const padX = (xmax - xmin) * 0.06
 
-    const [ymin, xmin, ymax, xmax] = b
-    // validate box coordinates
-    if (ymax <= ymin || xmax <= xmin) return { dataUrl: input }
+        const top = Math.max(0, Math.round(((ymin - padY) / 1000) * height))
+        const left = Math.max(0, Math.round(((xmin - padX) / 1000) * width))
+        const bottom = Math.min(height, Math.round(((ymax + padY) / 1000) * height))
+        const right = Math.min(width, Math.round(((xmax + padX) / 1000) * width))
 
-    // Convert 0..1000 to pixel coordinates with 6% safety padding
-    const padY = (ymax - ymin) * 0.06
-    const padX = (xmax - xmin) * 0.06
+        cropW = Math.max(10, right - left)
+        cropH = Math.max(10, bottom - top)
 
-    const top = Math.max(0, Math.round(((ymin - padY) / 1000) * height))
-    const left = Math.max(0, Math.round(((xmin - padX) / 1000) * width))
-    const bottom = Math.min(height, Math.round(((ymax + padY) / 1000) * height))
-    const right = Math.min(width, Math.round(((xmax + padX) / 1000) * width))
+        cropped = (await sharp(buf)
+          .extract({ left, top, width: cropW, height: cropH })
+          .toBuffer()) as Buffer<ArrayBufferLike>
 
-    const cropW = Math.max(10, right - left)
-    const cropH = Math.max(10, bottom - top)
-
-    // Crop to the isolated object
-    const cropped = await sharp(buf)
-      .extract({ left, top, width: cropW, height: cropH })
-      .toBuffer()
+        box = [ymin, xmin, ymax, xmax]
+      }
+    }
 
     // Place on a clean square canvas with subtle studio background for Meshy
     const maxDim = Math.max(cropW, cropH)
@@ -116,8 +127,7 @@ export async function isolateObject(input: string): Promise<IsolationResult> {
 
     return {
       dataUrl: `data:image/jpeg;base64,${finalBuffer.toString('base64')}`,
-      box: [ymin, xmin, ymax, xmax],
-      label: parsed.label,
+      box,
     }
   } catch (err) {
     console.warn('[isolateObject] Falling back to original image:', err instanceof Error ? err.message : String(err))

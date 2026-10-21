@@ -1,6 +1,7 @@
 // Gemini vision: match a photo to a built-in template, or build a photo ObjectLesson. Owner: Shehryar (backend agent)
 import { NextResponse } from 'next/server'
 import { getFallbackLesson } from '@/lib/fallbackLesson'
+import { DEMO_ON, demoAnalyze } from '@/lib/demoSodaCan'
 import {
   AGE_MODES,
   buildAnalyzePrompt,
@@ -43,6 +44,10 @@ export async function POST(req: Request) {
   if (body.interests !== undefined && !Array.isArray(body.interests)) return bad('interests must be an array of strings')
   if (imageBase64.length > MAX_IMAGE_CHARS) return bad('image too large', 413)
   const image = parseImage(imageBase64)
+  if (DEMO_ON) {
+    await new Promise((r) => setTimeout(r, 1800)) // feel like real recognition
+    return NextResponse.json(demoAnalyze(typeof body?.name === 'string' ? body.name : undefined))
+  }
   if (!image) return bad('imageBase64 is not valid base64 image data')
 
   const name = cleanName(body.name)
@@ -57,13 +62,22 @@ export async function POST(req: Request) {
   const available = availableTemplates()
   const t0 = Date.now()
   try {
-    const raw = await generateJson({
-      prompt: buildAnalyzePrompt({ available, name, interests }),
-      schema: buildAnalyzeSchema(available),
-      image,
-      timeoutMs: GEMINI_TIMEOUT_MS,
-      maxOutputTokens: 3000,
-    })
+    const attempt = (timeoutMs: number) =>
+      generateJson({
+        prompt: buildAnalyzePrompt({ available, name, interests }),
+        schema: buildAnalyzeSchema(available),
+        image,
+        timeoutMs,
+        maxOutputTokens: 3000,
+      })
+    // NVIDIA vision occasionally errors or stalls; one retry beats showing "Mystery Object".
+    let raw: unknown
+    try {
+      raw = await attempt(GEMINI_TIMEOUT_MS)
+    } catch (first) {
+      console.warn(`[analyze] first attempt failed after ${Date.now() - t0}ms, retrying:`, first instanceof Error ? first.message : first)
+      raw = await attempt(GEMINI_TIMEOUT_MS)
+    }
     const res = toResponse(raw, available, name)
     console.log(`[analyze] ok ${res.matchedTemplate ?? 'photo'} in ${Date.now() - t0}ms`)
     return NextResponse.json(res)
