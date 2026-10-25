@@ -1,4 +1,4 @@
-# Curio — point at any object, learn it in 3D, adapted to who's watching
+# Curio — point at any object, learn it in 3D, adapted to who's watching (kids, teens, or adults)
 
 Scan a real object (charger / phone / water bottle) → Curio shows a 3D twin with 3 pins → a guide
 explains each part out loud, adapted to the viewer's age (k-ID), voice and mood (Modulate), spoken
