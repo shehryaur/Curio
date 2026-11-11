@@ -1,6 +1,7 @@
 // Modulate: voice in -> transcript, PII redaction (minors), emotion (frustrated -> Plain Words). Owner: Shehryar
 import type { VoiceResponse } from '@/lib/types'
 import { MAX_AUDIO_BYTES, transcribeVoice, unavailable } from '@/lib/modulate'
+import { isMinor as serverIsMinor } from '@/lib/kidServer'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -21,8 +22,9 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: 'audio too large (max 10MB)' }, { status: 413 })
   }
 
-  // Default to the safest setting: treat as a minor unless explicitly "false".
-  const isMinor = String(form.get('isMinor') ?? 'true').trim().toLowerCase() !== 'false'
+  // The client's flag is only a hint; the server's verified age cookie decides. Default to minor.
+  const requestedMinor = String(form.get('isMinor') ?? 'true').trim().toLowerCase() !== 'false'
+  const isMinor = serverIsMinor(req, requestedMinor)
   const langRaw = form.get('language')
   const language = typeof langRaw === 'string' && /^[a-z]{2}$/i.test(langRaw.trim()) ? langRaw.trim().toLowerCase() : undefined
 

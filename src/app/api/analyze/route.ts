@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server'
 import { getFallbackLesson } from '@/lib/fallbackLesson'
 import { DEMO_ON, demoAnalyze } from '@/lib/demoSodaCan'
+import { clampMode } from '@/lib/kidServer'
 import {
   AGE_MODES,
   buildAnalyzePrompt,
@@ -37,8 +38,9 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null
   if (!body || typeof body !== 'object' || Array.isArray(body)) return bad('body must be a JSON object')
 
-  const { imageBase64, mode } = body
-  if (!isAgeMode(mode)) return bad('mode must be child | teen | adult | plainWords')
+  const { imageBase64, mode: requestedMode } = body
+  if (!isAgeMode(requestedMode)) return bad('mode must be child | teen | adult | plainWords')
+  const mode = clampMode(req, requestedMode) // server-authoritative: a verified minor can't request a higher tier
   if (typeof imageBase64 !== 'string' || !imageBase64) return bad('imageBase64 is required')
   if (body.name !== undefined && typeof body.name !== 'string') return bad('name must be a string')
   if (body.interests !== undefined && !Array.isArray(body.interests)) return bad('interests must be an array of strings')
