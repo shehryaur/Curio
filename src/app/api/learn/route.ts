@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server'
 import { learnTopic } from '@/lib/topicLesson'
 import { cleanInterests, cleanName, isAgeMode } from '@/lib/gemini'
+import { clampMode } from '@/lib/kidServer'
 
 export const runtime = 'nodejs'
 
@@ -16,7 +17,8 @@ export async function POST(req: Request) {
   const t0 = Date.now()
   const res = await learnTopic({
     topic: topic.slice(0, 200),
-    mode: body.mode,
+    mode: clampMode(req, body.mode), // server-authoritative age clamp
+
     name: cleanName(body.name),
     interests: cleanInterests(body.interests),
   })

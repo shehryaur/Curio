@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { buildAskPrompt, devErrorHeader, cleanInterests, cleanName, isAgeMode } from '@/lib/gemini'
 import { chatJson } from '@/lib/llm'
 import type { AgeMode, AskResponse } from '@/lib/types'
+import { clampMode } from '@/lib/kidServer'
 
 export const runtime = 'nodejs'
 
@@ -44,8 +45,9 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null
   if (!body || typeof body !== 'object') return bad('body must be JSON')
 
-  const { question, objectTitle, mode } = body
-  if (!isAgeMode(mode)) return bad('mode must be child | teen | adult | plainWords')
+  const { question, objectTitle, mode: requestedMode } = body
+  if (!isAgeMode(requestedMode)) return bad('mode must be child | teen | adult | plainWords')
+  const mode = clampMode(req, requestedMode) // server-authoritative: ignore a spoofed mode from the client
   if (typeof question !== 'string' || !question.trim()) return bad('question is required')
   if (objectTitle !== undefined && typeof objectTitle !== 'string') return bad('objectTitle must be a string')
   if (body.name !== undefined && typeof body.name !== 'string') return bad('name must be a string')
